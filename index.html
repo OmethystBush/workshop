@@ -1,0 +1,3326 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#746097">
+<title>定制工坊管家</title>
+<!-- Supabase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+/* ═══════════════════════════════════════════
+   CSS 变量 & 全局重置
+   ═══════════════════════════════════════════ */
+:root {
+  --c-primary: #746097;
+  --c-secondary: #AD86AE;
+  --c-light-purple: #ECD9ED;
+  --c-beige: #EADACB;
+  --c-bg: #FBF8FB;
+  --c-gray-purple: #B5B0BA;
+  --c-white: #FFFFFF;
+  --c-text: #3A3040;
+  --c-text-light: #8A8490;
+  --c-danger: #D4736A;
+  --c-success: #6AAD7D;
+  --radius: 12px;
+  --shadow: 0 2px 12px rgba(116,96,151,0.10);
+  --shadow-lg: 0 4px 24px rgba(116,96,151,0.16);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --tab-height: 60px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; -webkit-tap-highlight-color: transparent; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC",
+    "Helvetica Neue", sans-serif;
+  background: var(--c-bg);
+  color: var(--c-text);
+  line-height: 1.6;
+  overflow-x: hidden;
+  padding-bottom: calc(var(--tab-height) + var(--safe-bottom) + 8px);
+}
+a { color: var(--c-primary); text-decoration: none; }
+button {
+  border: none; outline: none; cursor: pointer;
+  font-family: inherit; font-size: inherit;
+}
+input, textarea, select {
+  font-family: inherit; font-size: 15px;
+  border: 1.5px solid var(--c-light-purple);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  background: var(--c-white);
+  color: var(--c-text);
+  width: 100%;
+  transition: border-color .2s;
+}
+input:focus, textarea:focus, select:focus {
+  border-color: var(--c-primary);
+  outline: none;
+}
+textarea { resize: vertical; min-height: 80px; }
+img { display: block; max-width: 100%; }
+
+/* ═══════════════════════════════════════════
+   通用组件
+   ═══════════════════════════════════════════ */
+
+/* 按钮 */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 10px 24px; border-radius: 24px;
+  font-size: 15px; font-weight: 500;
+  transition: all .2s;
+}
+.btn-primary {
+  background: var(--c-primary); color: #fff;
+}
+.btn-primary:active { background: #5e4e7f; }
+.btn-secondary {
+  background: var(--c-light-purple); color: var(--c-primary);
+}
+.btn-secondary:active { background: #dcc6dd; }
+.btn-ghost {
+  background: transparent; color: var(--c-primary);
+  border: 1.5px solid var(--c-light-purple);
+}
+.btn-block { width: 100%; }
+.btn-sm { padding: 6px 16px; font-size: 13px; }
+.btn:disabled { opacity: .5; pointer-events: none; }
+
+/* Toast */
+.toast-wrap {
+  position: fixed; top: 60px; left: 50%; transform: translateX(-50%);
+  z-index: 9999; display: flex; flex-direction: column; gap: 8px;
+  pointer-events: none; width: 90%; max-width: 360px;
+}
+.toast {
+  padding: 12px 20px; border-radius: var(--radius);
+  background: var(--c-white); color: var(--c-text);
+  box-shadow: var(--shadow-lg);
+  font-size: 14px;
+  animation: toastIn .3s ease, toastOut .3s ease 2.7s forwards;
+  pointer-events: auto;
+  display: flex; align-items: center; gap: 8px;
+}
+.toast.error { border-left: 4px solid var(--c-danger); }
+.toast.success { border-left: 4px solid var(--c-success); }
+.toast.info { border-left: 4px solid var(--c-primary); }
+@keyframes toastIn { from { opacity:0; transform:translateY(-20px); } to { opacity:1; transform:translateY(0); } }
+@keyframes toastOut { from { opacity:1; } to { opacity:0; transform:translateY(-20px); } }
+
+/* 骨架屏 */
+.skeleton {
+  background: linear-gradient(90deg, #f0e8f0 25%, #f8f0f8 50%, #f0e8f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius);
+}
+@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+.skeleton-text { height: 14px; margin-bottom: 8px; border-radius: 7px; }
+.skeleton-card { height: 180px; margin-bottom: 12px; }
+
+/* 页面头部 */
+.page-header {
+  position: sticky; top: 0; z-index: 100;
+  background: var(--c-white);
+  padding: 12px 16px;
+  padding-top: calc(12px + env(safe-area-inset-top, 0px));
+  display: flex; align-items: center; gap: 12px;
+  border-bottom: 1px solid var(--c-light-purple);
+}
+.page-header h2 { flex: 1; font-size: 17px; font-weight: 600; }
+.page-header .back-btn {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--c-light-purple);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; color: var(--c-primary);
+}
+
+/* 页面容器 */
+.page { display: none; min-height: 100vh; padding-bottom: 20px; }
+.page.active { display: block; }
+.page-content { padding: 16px; }
+
+/* 卡片 */
+.card {
+  background: var(--c-white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+/* 底部标签栏 */
+.tab-bar {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: var(--c-light-purple);
+  display: flex; justify-content: space-around; align-items: center;
+  height: var(--tab-height);
+  padding-bottom: var(--safe-bottom);
+  z-index: 200;
+  border-top: 1px solid rgba(116,96,151,0.08);
+}
+.tab-item {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  gap: 2px; padding: 6px 0; position: relative;
+  color: var(--c-gray-purple); font-size: 11px; font-weight: 500;
+  transition: color .2s;
+  background: transparent;
+}
+.tab-item .tab-icon { font-size: 22px; transition: transform .2s; }
+.tab-item.active {
+  color: var(--c-primary);
+}
+.tab-item.active .tab-icon { transform: scale(1.1); }
+.tab-item.active::before {
+  content: '';
+  position: absolute; top: 2px; left: 50%; transform: translateX(-50%);
+  width: 48px; height: 28px;
+  background: rgba(116,96,151,0.12);
+  border-radius: 14px;
+}
+.tab-item .badge {
+  position: absolute; top: 0; right: 50%; transform: translateX(18px);
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--c-danger);
+}
+
+/* 模态框 */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(58,48,64,0.5);
+  z-index: 500; display: none; align-items: flex-end; justify-content: center;
+}
+.modal-overlay.active { display: flex; }
+.modal-sheet {
+  background: var(--c-white);
+  border-radius: 20px 20px 0 0;
+  width: 100%; max-width: 500px;
+  max-height: 90vh; overflow-y: auto;
+  padding: 24px 20px;
+  padding-bottom: calc(24px + var(--safe-bottom));
+  animation: slideUp .3s ease;
+}
+@keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+.modal-sheet h3 {
+  font-size: 18px; font-weight: 600;
+  text-align: center; margin-bottom: 20px;
+  color: var(--c-primary);
+}
+.modal-close {
+  position: absolute; top: 16px; right: 16px;
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--c-light-purple);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; color: var(--c-primary);
+}
+
+/* ═══════════════════════════════════════════
+   成品展示：瀑布流
+   ═══════════════════════════════════════════ */
+.filter-bar {
+  display: flex; gap: 8px; padding: 12px 16px;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+}
+.filter-bar::-webkit-scrollbar { display: none; }
+.filter-chip {
+  flex-shrink: 0; padding: 6px 16px;
+  border-radius: 20px; font-size: 13px; font-weight: 500;
+  background: var(--c-white); color: var(--c-gray-purple);
+  border: 1.5px solid var(--c-light-purple);
+  transition: all .2s;
+}
+.filter-chip.active {
+  background: var(--c-primary); color: #fff;
+  border-color: var(--c-primary);
+}
+.waterfall {
+  column-count: 2; column-gap: 12px;
+  padding: 0 16px;
+}
+.waterfall-item {
+  break-inside: avoid;
+  margin-bottom: 12px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--c-white);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: transform .2s;
+}
+.waterfall-item:active { transform: scale(0.97); }
+.waterfall-item .cover {
+  width: 100%; aspect-ratio: 3/4;
+  object-fit: cover;
+}
+.waterfall-item .pin-badge {
+  position: absolute; top: 8px; left: 8px;
+  background: var(--c-primary); color: #fff;
+  font-size: 10px; padding: 2px 8px;
+  border-radius: 10px;
+}
+.waterfall-item .info {
+  padding: 10px 12px;
+}
+.waterfall-item .info h4 {
+  font-size: 14px; font-weight: 500;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.waterfall-item .info .cat {
+  font-size: 12px; color: var(--c-gray-purple); margin-top: 2px;
+}
+
+/* ═══════════════════════════════════════════
+   作品详情抽屉
+   ═══════════════════════════════════════════ */
+.detail-drawer {
+  position: fixed; inset: 0; z-index: 400;
+  background: var(--c-white);
+  transform: translateX(100%);
+  transition: transform .35s cubic-bezier(.4,0,.2,1);
+  overflow-y: auto;
+}
+.detail-drawer.open { transform: translateX(0); }
+.carousel {
+  position: relative; overflow: hidden;
+  width: 100%; aspect-ratio: 3/4;
+  background: #f5f0f5;
+}
+.carousel-track {
+  display: flex; transition: transform .3s ease;
+  height: 100%;
+}
+.carousel-track img {
+  width: 100%; height: 100%;
+  object-fit: cover; flex-shrink: 0;
+}
+.carousel-dots {
+  position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 6px;
+}
+.carousel-dots .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: rgba(255,255,255,0.5);
+}
+.carousel-dots .dot.active { background: #fff; width: 18px; border-radius: 3px; }
+.detail-body { padding: 20px 16px; }
+.detail-body h2 { font-size: 20px; margin-bottom: 8px; }
+.detail-body .desc {
+  font-size: 14px; color: var(--c-text-light);
+  line-height: 1.8; margin-bottom: 16px;
+  white-space: pre-wrap;
+}
+
+/* ═══════════════════════════════════════════
+   排单列表
+   ═══════════════════════════════════════════ */
+.queue-section { padding: 0 16px; }
+.queue-month-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 0 8px; cursor: pointer;
+}
+.queue-month-header h3 {
+  font-size: 16px; font-weight: 600; color: var(--c-primary);
+}
+.queue-month-header .stats {
+  display: flex; gap: 12px; font-size: 12px; color: var(--c-text-light);
+}
+.queue-month-header .stats .full { color: var(--c-danger); font-weight: 600; }
+.queue-month-header .arrow {
+  transition: transform .2s; font-size: 14px; color: var(--c-gray-purple);
+}
+.queue-month-header .arrow.collapsed { transform: rotate(-90deg); }
+.queue-tip {
+  background: var(--c-beige);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin: 0 16px 12px;
+  font-size: 14px;
+  color: var(--c-primary);
+  display: flex; align-items: center; gap: 8px;
+}
+
+.queue-card {
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  display: flex; align-items: center; gap: 12px;
+  position: relative;
+  transition: transform .15s;
+}
+.queue-card:active { transform: scale(0.98); }
+
+/* 排队中 */
+.queue-card.status-queued {
+  background: var(--c-light-purple);
+}
+/* 制作中 */
+.queue-card.status-in_progress {
+  background: linear-gradient(135deg, var(--c-primary), var(--c-secondary));
+  color: #fff;
+}
+.queue-card.status-in_progress .qc-sub { color: rgba(255,255,255,0.8); }
+/* 已完成 */
+.queue-card.status-completed {
+  background: var(--c-gray-purple);
+  opacity: 0.55;
+}
+/* 我的 */
+.queue-card.is-mine {
+  background: var(--c-beige) !important;
+  border-left: 4px solid var(--c-primary);
+  color: var(--c-text) !important;
+  opacity: 1 !important;
+}
+.queue-card.is-mine .qc-sub { color: var(--c-text-light) !important; }
+.queue-card .mine-badge {
+  position: absolute; top: -4px; right: -4px;
+  background: var(--c-primary); color: #fff;
+  font-size: 10px; padding: 2px 8px;
+  border-radius: 0 var(--radius) 0 8px;
+}
+.qc-left { flex: 1; }
+.qc-no { font-size: 12px; opacity: .7; }
+.qc-name { font-weight: 600; font-size: 15px; margin: 2px 0; }
+.qc-sub { font-size: 12px; color: var(--c-text-light); }
+.qc-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.qc-rush {
+  background: var(--c-danger); color: #fff;
+  font-size: 10px; padding: 2px 8px;
+  border-radius: 10px; font-weight: 600;
+}
+.qc-dots {
+  display: flex; gap: 3px;
+}
+.qc-dots .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  border: 1.5px solid currentColor;
+}
+.qc-dots .dot.done { background: currentColor; }
+
+/* ═══════════════════════════════════════════
+   申请表单
+   ═══════════════════════════════════════════ */
+.form-group {
+  margin-bottom: 18px;
+}
+.form-group label {
+  display: block; font-size: 14px; font-weight: 500;
+  margin-bottom: 6px; color: var(--c-text);
+}
+.form-group label .required { color: var(--c-danger); }
+.img-picker-group { margin-bottom: 20px; }
+.img-picker-group .title {
+  font-size: 14px; font-weight: 500; margin-bottom: 8px;
+}
+.img-picker-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+}
+.img-picker-cell {
+  aspect-ratio: 1; border-radius: var(--radius);
+  border: 1.5px dashed var(--c-light-purple);
+  display: flex; align-items: center; justify-content: center;
+  position: relative; overflow: hidden; cursor: pointer;
+  background: var(--c-bg);
+  font-size: 24px; color: var(--c-gray-purple);
+}
+.img-picker-cell img {
+  width: 100%; height: 100%; object-fit: cover;
+}
+.img-picker-cell .remove {
+  position: absolute; top: 4px; right: 4px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: rgba(0,0,0,0.5); color: #fff;
+  font-size: 12px; display: flex; align-items: center; justify-content: center;
+}
+.fold-section {
+  border: 1.5px solid var(--c-light-purple);
+  border-radius: var(--radius);
+  overflow: hidden; margin-bottom: 18px;
+}
+.fold-header {
+  padding: 12px 16px;
+  display: flex; justify-content: space-between; align-items: center;
+  cursor: pointer;
+  font-size: 14px; font-weight: 500;
+  background: var(--c-bg);
+}
+.fold-body { padding: 16px; display: none; }
+.fold-section.open .fold-body { display: block; }
+.measure-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+}
+.switch-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 0;
+}
+.toggle {
+  width: 48px; height: 28px; border-radius: 14px;
+  background: var(--c-gray-purple);
+  position: relative; cursor: pointer;
+  transition: background .2s;
+}
+.toggle.on { background: var(--c-primary); }
+.toggle::after {
+  content: ''; position: absolute; top: 2px; left: 2px;
+  width: 24px; height: 24px; border-radius: 50%;
+  background: #fff; transition: transform .2s;
+}
+.toggle.on::after { transform: translateX(20px); }
+
+/* ═══════════════════════════════════════════
+   订单 & 详情
+   ═══════════════════════════════════════════ */
+.order-card {
+  background: var(--c-white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px; margin-bottom: 12px;
+  cursor: pointer; position: relative;
+  transition: transform .15s;
+}
+.order-card:active { transform: scale(0.98); }
+.order-card .unread-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--c-danger);
+  position: absolute; top: 12px; right: 12px;
+}
+.order-card .oc-no { font-size: 12px; color: var(--c-gray-purple); }
+.order-card .oc-title { font-size: 16px; font-weight: 600; margin: 4px 0; }
+.order-card .oc-status {
+  display: inline-block; padding: 2px 10px;
+  border-radius: 10px; font-size: 12px; font-weight: 500;
+}
+.oc-status.queued { background: var(--c-light-purple); color: var(--c-primary); }
+.oc-status.in_progress { background: var(--c-primary); color: #fff; }
+.oc-status.completed { background: var(--c-gray-purple); color: #fff; }
+
+/* 时间线 */
+.timeline { padding: 0 16px 16px; }
+.timeline-node {
+  display: flex; gap: 16px;
+  padding-bottom: 0;
+  position: relative;
+}
+.timeline-line {
+  width: 24px; display: flex; flex-direction: column; align-items: center;
+  flex-shrink: 0;
+}
+.timeline-dot {
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 2px solid var(--c-gray-purple);
+  background: var(--c-white);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; flex-shrink: 0;
+  position: relative; z-index: 2;
+}
+.timeline-node.done .timeline-dot {
+  background: var(--c-primary); border-color: var(--c-primary); color: #fff;
+}
+.timeline-node.current .timeline-dot {
+  border-color: var(--c-primary);
+  animation: breathe 2s ease-in-out infinite;
+}
+@keyframes breathe {
+  0%,100%{ transform:scale(1); box-shadow:0 0 0 0 rgba(116,96,151,0.3); }
+  50%{ transform:scale(1.2); box-shadow:0 0 0 8px rgba(116,96,151,0); }
+}
+.timeline-node.skipped .timeline-dot {
+  background: var(--c-gray-purple); border-color: var(--c-gray-purple);
+}
+.timeline-node.skipped .tl-name { text-decoration: line-through; color: var(--c-gray-purple); }
+.timeline-connector {
+  width: 2px; flex: 1; background: var(--c-light-purple); min-height: 28px;
+}
+.timeline-node.done .timeline-connector { background: var(--c-primary); }
+.tl-content { flex: 1; padding-bottom: 20px; }
+.tl-name { font-size: 14px; font-weight: 500; }
+.tl-time { font-size: 12px; color: var(--c-gray-purple); margin-top: 2px; }
+.tl-photos {
+  display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap;
+}
+.tl-photos img {
+  width: 56px; height: 56px; border-radius: 8px; object-fit: cover;
+  cursor: pointer;
+}
+
+/* 材料清单 */
+.material-card {
+  border: 1.5px solid var(--c-light-purple);
+  border-radius: var(--radius);
+  padding: 14px; margin-bottom: 10px;
+}
+.material-card .mc-name { font-weight: 600; font-size: 15px; }
+.material-card .mc-spec { font-size: 12px; color: var(--c-gray-purple); }
+.material-card .mc-row {
+  display: flex; justify-content: space-between; margin-top: 6px;
+  font-size: 13px;
+}
+.material-card .mc-images {
+  display: flex; gap: 8px; margin-top: 8px;
+}
+.material-card .mc-images .mc-img-box {
+  width: 72px; height: 72px; border-radius: 8px;
+  overflow: hidden; position: relative;
+}
+.material-card .mc-images .mc-img-box img {
+  width: 100%; height: 100%; object-fit: cover;
+}
+.material-card .mc-images .mc-label {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: rgba(0,0,0,0.5); color: #fff;
+  font-size: 10px; text-align: center; padding: 2px;
+}
+.material-total {
+  text-align: right; font-size: 16px; font-weight: 600;
+  color: var(--c-primary); padding: 12px 0;
+}
+
+/* 聊天气泡 */
+.chat-area { padding: 16px; }
+.chat-bubble {
+  max-width: 80%; margin-bottom: 12px;
+  display: flex; flex-direction: column;
+}
+.chat-bubble.mine { align-self: flex-end; margin-left: auto; }
+.chat-bubble.other { align-self: flex-start; }
+.chat-bubble .cb-name { font-size: 11px; color: var(--c-gray-purple); margin-bottom: 2px; }
+.chat-bubble .cb-body {
+  padding: 10px 14px; border-radius: 16px;
+  font-size: 14px; line-height: 1.5;
+}
+.chat-bubble.mine .cb-body {
+  background: var(--c-primary); color: #fff;
+  border-bottom-right-radius: 4px;
+}
+.chat-bubble.other .cb-body {
+  background: var(--c-light-purple); color: var(--c-text);
+  border-bottom-left-radius: 4px;
+}
+.chat-bubble.notification .cb-body {
+  background: var(--c-beige); color: var(--c-text);
+  text-align: center; font-size: 13px;
+  border-radius: var(--radius);
+}
+.chat-bubble .cb-body img {
+  max-width: 200px; border-radius: 8px; margin-top: 6px;
+}
+.chat-bubble .cb-time { font-size: 11px; color: var(--c-gray-purple); margin-top: 4px; }
+.chat-input-bar {
+  display: flex; gap: 8px; align-items: flex-end;
+  padding: 12px 16px;
+  background: var(--c-white);
+  border-top: 1px solid var(--c-light-purple);
+}
+.chat-input-bar textarea {
+  flex: 1; min-height: 36px; max-height: 100px;
+  border-radius: 18px; padding: 8px 14px;
+  resize: none;
+}
+.chat-input-bar .chat-img-btn {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--c-light-purple); color: var(--c-primary);
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* ═══════════════════════════════════════════
+   我的页面
+   ═══════════════════════════════════════════ */
+.profile-header {
+  background: linear-gradient(135deg, var(--c-primary), var(--c-secondary));
+  color: #fff; padding: 32px 20px 24px;
+  padding-top: calc(32px + env(safe-area-inset-top, 0px));
+  text-align: center;
+}
+.profile-header .avatar {
+  width: 64px; height: 64px; border-radius: 50%;
+  background: rgba(255,255,255,0.25);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px; margin: 0 auto 10px;
+}
+.profile-header .name { font-size: 18px; font-weight: 600; }
+.profile-header .phone { font-size: 13px; opacity: .8; }
+.profile-menu { padding: 16px; }
+.profile-menu-item {
+  display: flex; align-items: center; gap: 14px;
+  padding: 16px; background: var(--c-white);
+  border-radius: var(--radius);
+  margin-bottom: 10px; box-shadow: var(--shadow);
+  cursor: pointer; position: relative;
+  transition: transform .15s;
+}
+.profile-menu-item:active { transform: scale(0.98); }
+.profile-menu-item .pmi-icon {
+  width: 40px; height: 40px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+}
+.profile-menu-item .pmi-text { flex: 1; font-size: 15px; }
+.profile-menu-item .pmi-arrow { color: var(--c-gray-purple); }
+.profile-menu-item .pmi-badge {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--c-danger);
+  position: absolute; top: 12px; right: 40px;
+}
+
+/* ═══════════════════════════════════════════
+   后台管理
+   ═══════════════════════════════════════════ */
+.admin-nav {
+  display: flex; gap: 8px; padding: 12px 16px;
+  overflow-x: auto; background: var(--c-white);
+  border-bottom: 1px solid var(--c-light-purple);
+}
+.admin-nav-item {
+  flex-shrink: 0; padding: 8px 18px;
+  border-radius: 20px; font-size: 14px; font-weight: 500;
+  background: var(--c-bg); color: var(--c-text-light);
+  position: relative;
+}
+.admin-nav-item.active {
+  background: var(--c-primary); color: #fff;
+}
+.admin-nav-item .an-badge {
+  position: absolute; top: -2px; right: -2px;
+  min-width: 16px; height: 16px; padding: 0 5px;
+  border-radius: 8px; background: var(--c-danger); color: #fff;
+  font-size: 10px; display: flex; align-items: center; justify-content: center;
+}
+.stat-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  padding: 16px;
+}
+.stat-card {
+  background: var(--c-white); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 16px; text-align: center;
+}
+.stat-card .num {
+  font-size: 28px; font-weight: 700; color: var(--c-primary);
+}
+.stat-card .label { font-size: 12px; color: var(--c-text-light); margin-top: 4px; }
+
+.admin-list { padding: 0 16px 16px; }
+.admin-card {
+  background: var(--c-white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 14px 16px; margin-bottom: 10px;
+  position: relative;
+}
+.admin-card .ac-title { font-weight: 600; font-size: 15px; }
+.admin-card .ac-sub { font-size: 12px; color: var(--c-text-light); margin-top: 4px; }
+.admin-card .ac-actions {
+  display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap;
+}
+.admin-search {
+  padding: 12px 16px;
+}
+.admin-search input {
+  border-radius: 24px;
+  padding-left: 40px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23B5B0BA' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: 14px center;
+}
+
+/* 申请管理三标签 */
+.app-tabs {
+  display: flex; border-bottom: 2px solid var(--c-light-purple);
+  margin: 0 16px;
+}
+.app-tab {
+  flex: 1; text-align: center; padding: 10px;
+  font-size: 14px; font-weight: 500;
+  color: var(--c-gray-purple);
+  position: relative; cursor: pointer;
+  background: transparent;
+}
+.app-tab.active { color: var(--c-primary); }
+.app-tab.active::after {
+  content: ''; position: absolute;
+  bottom: -2px; left: 25%; width: 50%; height: 2px;
+  background: var(--c-primary); border-radius: 1px;
+}
+
+/* 图片预览弹窗 */
+.img-preview-overlay {
+  position: fixed; inset: 0; z-index: 600;
+  background: rgba(0,0,0,0.9);
+  display: none; align-items: center; justify-content: center;
+}
+.img-preview-overlay.active { display: flex; }
+.img-preview-overlay img {
+  max-width: 95%; max-height: 90vh;
+  border-radius: 8px;
+}
+
+/* 结果页 */
+.result-page {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 60px 20px; text-align: center;
+}
+.result-icon {
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  background: var(--c-light-purple);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 40px; color: var(--c-primary);
+  margin-bottom: 20px;
+}
+
+/* ═══════════════════════════════════════════
+   响应式：平板
+   ═══════════════════════════════════════════ */
+@media (min-width: 768px) {
+  .waterfall { column-count: 3; }
+  .stat-grid { grid-template-columns: repeat(4, 1fr); }
+  .measure-grid { grid-template-columns: repeat(3, 1fr); }
+  .img-picker-grid { grid-template-columns: repeat(4, 1fr); }
+  .modal-sheet { max-width: 520px; border-radius: 20px; margin-bottom: 5vh; }
+  .modal-overlay { align-items: center; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     Toast 容器
+     ═══════════════════════════════════════════ -->
+<div id="toastWrap" class="toast-wrap"></div>
+
+<!-- ═══════════════════════════════════════════
+     图片预览
+     ═══════════════════════════════════════════ -->
+<div id="imgPreview" class="img-preview-overlay" onclick="closeImgPreview()">
+  <img id="imgPreviewSrc" src="" alt="">
+</div>
+
+<!-- ═══════════════════════════════════════════
+     底部标签栏
+     ═══════════════════════════════════════════ -->
+<nav id="tabBar" class="tab-bar">
+  <button class="tab-item active" data-tab="works">
+    <span class="tab-icon">🎨</span>成品
+  </button>
+  <button class="tab-item" data-tab="queue">
+    <span class="tab-icon">📋</span>排单
+  </button>
+  <button class="tab-item" data-tab="apply">
+    <span class="tab-icon">✏️</span>申请
+  </button>
+  <button class="tab-item" data-tab="orders">
+    <span class="tab-icon">📦</span>订单
+  </button>
+  <button class="tab-item" data-tab="profile">
+    <span class="tab-icon">👤</span>我的
+  </button>
+</nav>
+
+<!-- ═══════════════════════════════════════════
+     页面：成品展示
+     ═══════════════════════════════════════════ -->
+<div id="page-works" class="page active">
+  <div class="page-header" style="border-bottom:none;">
+    <h2>✨ 成品展示</h2>
+  </div>
+  <div id="worksFilter" class="filter-bar"></div>
+  <div id="worksGrid" class="waterfall"></div>
+  <div id="worksLoading" class="page-content">
+    <div class="skeleton skeleton-card"></div>
+    <div class="skeleton skeleton-card" style="height:140px;"></div>
+  </div>
+</div>
+
+<!-- 作品详情抽屉 -->
+<div id="workDetail" class="detail-drawer">
+  <div class="page-header">
+    <button class="back-btn" onclick="closeWorkDetail()">←</button>
+    <h2>作品详情</h2>
+  </div>
+  <div id="workCarousel" class="carousel">
+    <div class="carousel-track"></div>
+    <div class="carousel-dots"></div>
+  </div>
+  <div id="workDetailBody" class="detail-body"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     页面：排单列表
+     ═══════════════════════════════════════════ -->
+<div id="page-queue" class="page">
+  <div class="page-header" style="border-bottom:none;">
+    <h2>📋 排单看板</h2>
+  </div>
+  <div id="queueTip" class="queue-tip" style="display:none;"></div>
+  <div id="queueList" class="queue-section"></div>
+  <div id="queueLoading" class="page-content">
+    <div class="skeleton skeleton-text" style="width:40%;"></div>
+    <div class="skeleton skeleton-card" style="height:70px;"></div>
+    <div class="skeleton skeleton-card" style="height:70px;"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     页面：申请订单
+     ═══════════════════════════════════════════ -->
+<div id="page-apply" class="page">
+  <div class="page-header" style="border-bottom:none;">
+    <h2>✏️ 定制申请</h2>
+  </div>
+  <div id="applyForm" class="page-content">
+    <div class="form-group">
+      <label>称呼 <span class="required">*</span></label>
+      <input id="applyName" type="text" placeholder="您的称呼">
+    </div>
+    <div class="form-group">
+      <label>联系方式 <span class="required">*</span></label>
+      <input id="applyContact" type="tel" placeholder="手机号/微信号">
+    </div>
+    <div class="form-group">
+      <label>定制需求</label>
+      <textarea id="applyReq" placeholder="请描述您想定制的服装类型、风格等"></textarea>
+    </div>
+    <div class="form-group">
+      <label>预算范围</label>
+      <input id="applyBudget" type="text" placeholder="如：2000-3000">
+    </div>
+    <div class="form-group">
+      <label>期望完成时间</label>
+      <input id="applyTime" type="text" placeholder="如：年前、3月份等">
+    </div>
+    <div class="switch-row">
+      <label>加急订单</label>
+      <div id="applyRush" class="toggle" onclick="this.classList.toggle('on')"></div>
+    </div>
+    <!-- 参考图 -->
+    <div class="img-picker-group">
+      <div class="title">设计草图（最多6张）</div>
+      <div id="designImgs" class="img-picker-grid" data-group="design"></div>
+    </div>
+    <div class="img-picker-group">
+      <div class="title">风格参考（最多6张）</div>
+      <div id="styleImgs" class="img-picker-grid" data-group="style"></div>
+    </div>
+    <div class="img-picker-group">
+      <div class="title">细节参考（最多6张）</div>
+      <div id="detailImgs" class="img-picker-grid" data-group="detail"></div>
+    </div>
+    <!-- 身体尺寸折叠 -->
+    <div class="fold-section" id="measureFold">
+      <div class="fold-header" onclick="toggleFold('measureFold')">
+        <span>📐 身体尺寸（选填）</span>
+        <span class="arrow">▼</span>
+      </div>
+      <div class="fold-body">
+        <div class="measure-grid">
+          <div class="form-group"><label>身高(cm)</label><input id="m_height" type="number"></div>
+          <div class="form-group"><label>体重(kg)</label><input id="m_weight" type="number"></div>
+          <div class="form-group"><label>胸围(cm)</label><input id="m_bust" type="number"></div>
+          <div class="form-group"><label>腰围(cm)</label><input id="m_waist" type="number"></div>
+          <div class="form-group"><label>臀围(cm)</label><input id="m_hip" type="number"></div>
+          <div class="form-group"><label>肩宽(cm)</label><input id="m_shoulder" type="number"></div>
+          <div class="form-group"><label>袖长(cm)</label><input id="m_sleeve" type="number"></div>
+          <div class="form-group"><label>衣长(cm)</label><input id="m_length" type="number"></div>
+        </div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>特殊要求</label>
+      <textarea id="applySpecial" placeholder="其他需要说明的细节"></textarea>
+    </div>
+    <button class="btn btn-primary btn-block" onclick="submitApplication()" id="applySubmitBtn">
+      提交申请
+    </button>
+  </div>
+  <!-- 提交成功结果页 -->
+  <div id="applyResult" class="result-page" style="display:none;">
+    <div class="result-icon">✅</div>
+    <h3>申请已提交！</h3>
+    <p style="color:var(--c-text-light);margin:12px 0;font-size:14px;">
+      店主会尽快查看并联系您，请保持联系方式畅通
+    </p>
+    <button class="btn btn-secondary" onclick="resetApplyForm()">再提一个</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     页面：我的订单
+     ═══════════════════════════════════════════ -->
+<div id="page-orders" class="page">
+  <div class="page-header" style="border-bottom:none;">
+    <h2>📦 我的订单</h2>
+  </div>
+  <div id="myAppStatus" class="page-content" style="display:none;"></div>
+  <div id="ordersList" class="page-content"></div>
+  <div id="ordersLoading" class="page-content">
+    <div class="skeleton skeleton-card" style="height:90px;"></div>
+    <div class="skeleton skeleton-card" style="height:90px;"></div>
+  </div>
+  <div id="ordersEmpty" class="result-page" style="display:none;">
+    <div class="result-icon">📦</div>
+    <p style="color:var(--c-text-light);font-size:14px;">暂无订单</p>
+  </div>
+</div>
+
+<!-- 订单详情页 -->
+<div id="page-orderDetail" class="page">
+  <div class="page-header">
+    <button class="back-btn" onclick="navigateTo('orders')">←</button>
+    <h2 id="odTitle">订单详情</h2>
+  </div>
+  <div id="orderDetailContent" class="page-content"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     页面：我的
+     ═══════════════════════════════════════════ -->
+<div id="page-profile" class="page">
+  <div id="profileContent"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     页面：后台管理
+     ═══════════════════════════════════════════ -->
+<div id="page-admin" class="page">
+  <div class="page-header">
+    <button class="back-btn" onclick="navigateTo('profile')">←</button>
+    <h2>🔧 后台管理</h2>
+  </div>
+  <nav id="adminNav" class="admin-nav"></nav>
+  <div id="adminBody"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     模态框：登录/注册
+     ═══════════════════════════════════════════ -->
+<div id="authModal" class="modal-overlay">
+  <div class="modal-sheet" style="position:relative;">
+    <button class="modal-close" onclick="closeAuthModal()">✕</button>
+    <div id="authFormLogin">
+      <h3>登录</h3>
+      <div class="form-group">
+        <label>手机号</label>
+        <input id="loginPhone" type="tel" placeholder="请输入手机号" maxlength="11">
+      </div>
+      <div class="form-group">
+        <label>密码</label>
+        <input id="loginPwd" type="password" placeholder="请输入密码">
+      </div>
+      <button class="btn btn-primary btn-block" onclick="doLogin()" id="loginBtn">登录</button>
+      <p style="text-align:center;margin-top:16px;font-size:14px;color:var(--c-text-light);">
+        没有账号？<a href="javascript:;" onclick="showAuthForm('register')">去注册</a>
+        &nbsp;|&nbsp;
+        <a href="javascript:;" onclick="showAuthForm('reset')">忘记密码</a>
+      </p>
+    </div>
+    <div id="authFormRegister" style="display:none;">
+      <h3>注册</h3>
+      <div class="form-group">
+        <label>手机号 <span class="required">*</span></label>
+        <input id="regPhone" type="tel" placeholder="请输入手机号" maxlength="11">
+      </div>
+      <div class="form-group">
+        <label>昵称</label>
+        <input id="regNick" type="text" placeholder="给自己取个名字吧">
+      </div>
+      <div class="form-group">
+        <label>密码 <span class="required">*</span></label>
+        <input id="regPwd" type="password" placeholder="至少6位">
+      </div>
+      <div class="form-group">
+        <label>密保问题 <span class="required">*</span></label>
+        <input id="regSecQ" type="text" placeholder="如：我的第一只宠物叫什么">
+      </div>
+      <div class="form-group">
+        <label>密保答案 <span class="required">*</span></label>
+        <input id="regSecA" type="text" placeholder="密保答案">
+      </div>
+      <button class="btn btn-primary btn-block" onclick="doRegister()" id="regBtn">注册</button>
+      <p style="text-align:center;margin-top:16px;font-size:14px;color:var(--c-text-light);">
+        已有账号？<a href="javascript:;" onclick="showAuthForm('login')">去登录</a>
+      </p>
+    </div>
+    <div id="authFormReset" style="display:none;">
+      <h3>重置密码</h3>
+      <div class="form-group">
+        <label>手机号</label>
+        <input id="resetPhone" type="tel" placeholder="注册时的手机号" maxlength="11">
+      </div>
+      <div class="form-group">
+        <label>密保答案</label>
+        <input id="resetSecA" type="text" placeholder="您设置的密保答案">
+      </div>
+      <div class="form-group">
+        <label>新密码</label>
+        <input id="resetNewPwd" type="password" placeholder="至少6位">
+      </div>
+      <button class="btn btn-primary btn-block" onclick="doResetPwd()">重置密码</button>
+      <p style="text-align:center;margin-top:16px;font-size:14px;color:var(--c-text-light);">
+        <a href="javascript:;" onclick="showAuthForm('login')">返回登录</a>
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     通用模态框
+     ═══════════════════════════════════════════ -->
+<div id="commonModal" class="modal-overlay">
+  <div class="modal-sheet" style="position:relative;">
+    <button class="modal-close" onclick="closeCommonModal()">✕</button>
+    <div id="commonModalBody"></div>
+  </div>
+</div>
+
+<!-- 隐藏 file input -->
+<input type="file" id="fileInput" accept="image/*" style="display:none;" multiple>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   定制工坊管家 — 前端完整逻辑
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════
+   0. 全局配置
+   ═══════════════════════════════════════════ */
+const SUPABASE_URL = 'https://prozexrlxwyqbapsrhxp.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_VAzPsbt3DKM4mD9HBi72Kg_Crwf7nW8';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentUser = null;
+let currentProfile = null;
+let applyImages = { design: [], style: [], detail: [] };
+let fileInputCallback = null;
+
+/* ═══════════════════════════════════════════
+   1. 工具函数
+   ═══════════════════════════════════════════ */
+
+/** Toast 提示 */
+function toast(msg, type = 'info') {
+  const wrap = document.getElementById('toastWrap');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  wrap.appendChild(el);
+  setTimeout(() => el.remove(), 3200);
+}
+
+/** 显示/隐藏元素 */
+function show(id) {
+  const el = typeof id === 'string' ? document.getElementById(id) : id;
+  if (el) el.style.display = '';
+}
+function hide(id) {
+  const el = typeof id === 'string' ? document.getElementById(id) : id;
+  if (el) el.style.display = 'none';
+}
+
+/** 日期格式化 */
+function fmtDate(str) {
+  if (!str) return '';
+  const d = new Date(str);
+  return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+function fmtDay(str) {
+  if (!str) return '';
+  const d = new Date(str);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function fmtMonth(m) {
+  if (!m) return '未排期';
+  const [y, mo] = m.split('-');
+  return `${y}年${parseInt(mo)}月`;
+}
+function getCurrentMonth() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+
+/** 脱敏姓名 */
+function maskName(name) {
+  if (!name || name.length < 2) return name || '';
+  return name[0] + '*'.repeat(name.length - 1);
+}
+
+/** 状态文字 */
+function statusText(s) {
+  return { queued: '排队中', in_progress: '制作中', completed: '已完成' }[s] || s;
+}
+function appStatusText(s) {
+  return { pending: '待处理', accepted: '已接单', rejected: '已拒绝' }[s] || s;
+}
+function matStatusText(s) {
+  return { pending: '待采购', ordered: '已下单', arrived: '已到货' }[s] || s;
+}
+
+/** 图片压缩（长边 1600，质量 0.8） */
+function compressImage(file, maxSize = 1600, quality = 0.8) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width;
+        let h = img.height;
+        if (w > h && w > maxSize) {
+          h = Math.round(h * maxSize / w);
+          w = maxSize;
+        } else if (h > maxSize) {
+          w = Math.round(w * maxSize / h);
+          h = maxSize;
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        canvas.toBlob((blob) => resolve(blob), 'image/jpeg', quality);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+/** 上传图片到 Storage */
+async function uploadImage(bucket, file) {
+  const compressed = await compressImage(file);
+  const ext = 'jpg';
+  const path = `${Date.now()}_${Math.random().toString(36).slice(2,8)}.${ext}`;
+  const { data, error } = await sb.storage.from(bucket).upload(path, compressed, {
+    contentType: 'image/jpeg'
+  });
+  if (error) {
+    toast('图片上传失败: ' + error.message, 'error');
+    return null;
+  }
+  const { data: urlData } = sb.storage.from(bucket).getPublicUrl(path);
+  return urlData.publicUrl;
+}
+
+/** 打开图片预览 */
+function previewImg(src) {
+  document.getElementById('imgPreviewSrc').src = src;
+  document.getElementById('imgPreview').classList.add('active');
+}
+function closeImgPreview() {
+  document.getElementById('imgPreview').classList.remove('active');
+}
+
+/** 折叠面板 */
+function toggleFold(id) {
+  document.getElementById(id).classList.toggle('open');
+}
+
+/** Storage 公开 URL */
+function storageUrl(bucket, path) {
+  if (!path) return '';
+  if (path.startsWith('http')) return path;
+  const { data } = sb.storage.from(bucket).getPublicUrl(path);
+  return data.publicUrl;
+}
+
+/* ═══════════════════════════════════════════
+   2. 路由系统
+   ═══════════════════════════════════════════ */
+const mainPages = ['works', 'queue', 'apply', 'orders', 'profile'];
+
+function navigateTo(page, params = {}) {
+  let hash = page;
+  if (params.id) hash += '/' + params.id;
+  location.hash = hash;
+}
+
+function handleRoute() {
+  const hash = location.hash.slice(1) || 'works';
+  const parts = hash.split('/');
+  const page = parts[0];
+  const subId = parts[1] || null;
+
+  // 隐藏所有页面
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+
+  // 底部 tab 高亮
+  const isAdminPage = page === 'admin';
+  document.getElementById('tabBar').style.display = isAdminPage ? 'none' : '';
+  document.querySelectorAll('.tab-item').forEach(t => {
+    t.classList.toggle('active', t.dataset.tab === (mainPages.includes(page) ? page : ''));
+  });
+
+  if (page === 'orderDetail' && subId) {
+    document.getElementById('page-orderDetail').classList.add('active');
+    loadOrderDetail(subId);
+    return;
+  }
+
+  if (page === 'admin') {
+    document.getElementById('page-admin').classList.add('active');
+    initAdmin(subId || 'dashboard');
+    return;
+  }
+
+  // 主页面
+  const pageEl = document.getElementById('page-' + page);
+  if (pageEl) {
+    pageEl.classList.add('active');
+    // 触发页面加载
+    if (page === 'works') loadWorks();
+    else if (page === 'queue') loadQueue();
+    else if (page === 'apply') initApplyForm();
+    else if (page === 'orders') loadMyOrders();
+    else if (page === 'profile') renderProfile();
+  } else {
+    // 默认回成品
+    document.getElementById('page-works').classList.add('active');
+    loadWorks();
+  }
+}
+
+window.addEventListener('hashchange', handleRoute);
+
+// Tab 点击
+document.getElementById('tabBar').addEventListener('click', (e) => {
+  const tab = e.target.closest('.tab-item');
+  if (tab) navigateTo(tab.dataset.tab);
+});
+
+/* ═══════════════════════════════════════════
+   3. 认证模块
+   ═══════════════════════════════════════════ */
+
+function phoneToEmail(phone) {
+  return `${phone}@studio.local`;
+}
+
+function openAuthModal(form = 'login') {
+  document.getElementById('authModal').classList.add('active');
+  showAuthForm(form);
+}
+function closeAuthModal() {
+  document.getElementById('authModal').classList.remove('active');
+}
+function showAuthForm(form) {
+  hide('authFormLogin');
+  hide('authFormRegister');
+  hide('authFormReset');
+  show('authForm' + form.charAt(0).toUpperCase() + form.slice(1));
+}
+
+/** 登录 */
+async function doLogin() {
+  const phone = document.getElementById('loginPhone').value.trim();
+  const pwd = document.getElementById('loginPwd').value;
+  if (!phone || !pwd) return toast('请填写手机号和密码', 'error');
+
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true;
+  btn.textContent = '登录中…';
+
+  const { data, error } = await sb.auth.signInWithPassword({
+    email: phoneToEmail(phone),
+    password: pwd
+  });
+
+  btn.disabled = false;
+  btn.textContent = '登录';
+
+  if (error) {
+    toast('登录失败: ' + error.message, 'error');
+    return;
+  }
+  toast('登录成功！', 'success');
+  closeAuthModal();
+  await loadUserProfile();
+  handleRoute();
+
+  // 检查是否有待提交的申请草稿
+  trySubmitDraft();
+}
+
+/** 注册 */
+async function doRegister() {
+  const phone = document.getElementById('regPhone').value.trim();
+  const nick = document.getElementById('regNick').value.trim();
+  const pwd = document.getElementById('regPwd').value;
+  const secQ = document.getElementById('regSecQ').value.trim();
+  const secA = document.getElementById('regSecA').value.trim();
+
+  if (!phone || !pwd) return toast('手机号和密码必填', 'error');
+  if (phone.length !== 11) return toast('请输入11位手机号', 'error');
+  if (pwd.length < 6) return toast('密码至少6位', 'error');
+  if (!secQ || !secA) return toast('密保问题和答案必填', 'error');
+
+  const btn = document.getElementById('regBtn');
+  btn.disabled = true;
+  btn.textContent = '注册中…';
+
+  const { data, error } = await sb.auth.signUp({
+    email: phoneToEmail(phone),
+    password: pwd
+  });
+
+  if (error) {
+    btn.disabled = false;
+    btn.textContent = '注册';
+    toast('注册失败: ' + error.message, 'error');
+    return;
+  }
+
+  // 更新 profiles（触发器已创建基础记录）
+  const userId = data.user.id;
+  const { error: profErr } = await sb.from('profiles').update({
+    nickname: nick || ('用户' + phone.slice(-4)),
+    security_question: secQ,
+    security_answer: secA
+  }).eq('id', userId);
+
+  btn.disabled = false;
+  btn.textContent = '注册';
+
+  if (profErr) {
+    toast('资料保存失败: ' + profErr.message, 'error');
+  }
+
+  toast('注册成功！', 'success');
+  closeAuthModal();
+  await loadUserProfile();
+  handleRoute();
+  trySubmitDraft();
+}
+
+/** 密保重置密码 */
+async function doResetPwd() {
+  const phone = document.getElementById('resetPhone').value.trim();
+  const secA = document.getElementById('resetSecA').value.trim();
+  const newPwd = document.getElementById('resetNewPwd').value;
+
+  if (!phone || !secA || !newPwd) return toast('请填写全部信息', 'error');
+  if (newPwd.length < 6) return toast('密码至少6位', 'error');
+
+  // 验证密保
+  const { data: prof, error: pErr } = await sb.from('profiles')
+    .select('id, security_answer')
+    .eq('phone', phone)
+    .single();
+
+  if (pErr || !prof) return toast('未找到该手机号对应的账号', 'error');
+  if (prof.security_answer !== secA) return toast('密保答案错误', 'error');
+
+  // 先登录才能改密码 — 这里用 admin API 不可行
+  // 方案：用密保验证后，让用户先用旧密码登录 → 改密码
+  // 但用户忘了密码... 只能通过服务端改
+  // 在纯前端方案中，我们使用一个 workaround：
+  // 实际项目应用 Edge Function。这里简化：提示用户联系管理员
+  toast('密保验证通过，请联系管理员重置密码', 'info');
+}
+
+/** 加载用户资料 */
+async function loadUserProfile() {
+  const { data: { user } } = await sb.auth.getUser();
+  currentUser = user;
+  if (!user) {
+    currentProfile = null;
+    return;
+  }
+  const { data, error } = await sb.from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single();
+  if (!error && data) {
+    currentProfile = data;
+  }
+}
+
+/** 退出登录 */
+async function doLogout() {
+  await sb.auth.signOut();
+  currentUser = null;
+  currentProfile = null;
+  toast('已退出登录', 'info');
+  navigateTo('works');
+}
+
+/* ═══════════════════════════════════════════
+   4. 成品展示模块
+   ═══════════════════════════════════════════ */
+let worksData = [];
+let categoriesData = [];
+let selectedCategory = null;
+
+async function loadWorks() {
+  show('worksLoading');
+  hide('worksGrid');
+
+  // 加载分类
+  if (categoriesData.length === 0) {
+    const { data: cats } = await sb.from('categories')
+      .select('*')
+      .order('sort_order');
+    categoriesData = cats || [];
+    renderCategoryFilter();
+  }
+
+  // 加载作品
+  let query = sb.from('works')
+    .select('*, categories(name)')
+    .eq('is_hidden', false)
+    .order('is_pinned', { ascending: false })
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: false });
+
+  if (selectedCategory) {
+    query = query.eq('category_id', selectedCategory);
+  }
+
+  const { data, error } = await query;
+  hide('worksLoading');
+
+  if (error) {
+    toast('加载失败: ' + error.message, 'error');
+    return;
+  }
+
+  worksData = data || [];
+  renderWaterfall();
+}
+
+function renderCategoryFilter() {
+  const container = document.getElementById('worksFilter');
+  let html = `<button class="filter-chip ${!selectedCategory ? 'active' : ''}" onclick="filterCategory(null)">全部</button>`;
+  categoriesData.forEach(c => {
+    html += `<button class="filter-chip ${selectedCategory === c.id ? 'active' : ''}" onclick="filterCategory('${c.id}')">${c.name}</button>`;
+  });
+  container.innerHTML = html;
+}
+
+function filterCategory(catId) {
+  selectedCategory = catId;
+  renderCategoryFilter();
+  loadWorks();
+}
+
+function renderWaterfall() {
+  const container = document.getElementById('worksGrid');
+  show(container);
+  if (!worksData.length) {
+    container.innerHTML = '<p style="text-align:center;padding:40px;color:var(--c-text-light);">暂无作品</p>';
+    return;
+  }
+  let html = '';
+  worksData.forEach(w => {
+    html += `
+      <div class="waterfall-item" onclick="openWorkDetail('${w.id}')" style="position:relative;">
+        ${w.is_pinned ? '<div class="pin-badge">📌 置顶</div>' : ''}
+        <img class="cover" src="${w.cover_image}" alt="${w.title}"
+             loading="lazy" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 3 4%22><rect fill=%22%23ECD9ED%22 width=%223%22 height=%224%22/></svg>'">
+        <div class="info">
+          <h4>${w.title}</h4>
+          <div class="cat">${w.categories?.name || ''}</div>
+        </div>
+      </div>`;
+  });
+  container.innerHTML = html;
+}
+
+/** 作品详情 */
+async function openWorkDetail(id) {
+  const work = worksData.find(w => w.id === id);
+  if (!work) return;
+
+  // 加载详情图
+  const { data: imgs } = await sb.from('work_images')
+    .select('*')
+    .eq('work_id', id)
+    .order('sort_order');
+
+  const allImgs = [work.cover_image, ...(imgs || []).map(i => i.image_url)].filter(Boolean);
+
+  // 渲染轮播
+  const track = document.querySelector('#workCarousel .carousel-track');
+  const dots = document.querySelector('#workCarousel .carousel-dots');
+  track.innerHTML = allImgs.map(src => `<img src="${src}" alt="">`).join('');
+  dots.innerHTML = allImgs.map((_, i) => `<div class="dot ${i === 0 ? 'active' : ''}"></div>`).join('');
+
+  // 轮播逻辑
+  initCarousel('workCarousel', allImgs.length);
+
+  // 详情内容
+  let bodyHtml = `<h2>${work.title}</h2>
+    <div class="desc">${work.description || '暂无描述'}</div>`;
+
+  // 关联订单的流程回顾
+  if (work.order_id) {
+    const { data: nodes } = await sb.from('order_nodes')
+      .select('*')
+      .eq('order_id', work.order_id)
+      .order('sort_order');
+    if (nodes && nodes.length) {
+      bodyHtml += `<h3 style="font-size:16px;margin:16px 0 12px;">🕐 制作回顾</h3>`;
+      bodyHtml += renderMiniTimeline(nodes);
+    }
+  }
+
+  bodyHtml += `<div style="margin-top:24px;">
+    <button class="btn btn-primary btn-block" onclick="sameStyleApply('${work.title}')">
+      ✨ 同款定制
+    </button>
+  </div>`;
+
+  document.getElementById('workDetailBody').innerHTML = bodyHtml;
+  document.getElementById('workDetail').classList.add('open');
+}
+
+function closeWorkDetail() {
+  document.getElementById('workDetail').classList.remove('open');
+}
+
+function sameStyleApply(title) {
+  closeWorkDetail();
+  navigateTo('apply');
+  setTimeout(() => {
+    document.getElementById('applyReq').value = `想定制同款：${title}`;
+  }, 100);
+}
+
+function renderMiniTimeline(nodes) {
+  let html = '<div style="padding-left:8px;">';
+  nodes.forEach((n, i) => {
+    const isDone = n.status === 'completed';
+    const isSkip = n.status === 'skipped';
+    html += `<div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:4px;">
+      <div style="width:12px;height:12px;border-radius:50%;margin-top:4px;flex-shrink:0;
+        background:${isDone ? 'var(--c-primary)' : isSkip ? 'var(--c-gray-purple)' : 'var(--c-light-purple)'};"></div>
+      <span style="font-size:13px;${isSkip ? 'text-decoration:line-through;color:var(--c-gray-purple);' : ''}">${n.node_name}${isDone && n.completed_at ? ' · ' + fmtDate(n.completed_at) : ''}</span>
+    </div>`;
+  });
+  html += '</div>';
+  return html;
+}
+
+/** 简易轮播 */
+function initCarousel(containerId, count) {
+  if (count <= 1) return;
+  const container = document.getElementById(containerId);
+  const track = container.querySelector('.carousel-track');
+  const dots = container.querySelectorAll('.dot');
+  let current = 0;
+  let startX = 0;
+
+  track.addEventListener('touchstart', (e) => {
+    startX = e.touches[0].clientX;
+  });
+  track.addEventListener('touchend', (e) => {
+    const diff = startX - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 50) {
+      current = diff > 0
+        ? Math.min(current + 1, count - 1)
+        : Math.max(current - 1, 0);
+      track.style.transform = `translateX(-${current * 100}%)`;
+      dots.forEach((d, i) => d.classList.toggle('active', i === current));
+    }
+  });
+}
+
+/* ═══════════════════════════════════════════
+   5. 排单列表模块
+   ═══════════════════════════════════════════ */
+async function loadQueue() {
+  show('queueLoading');
+  hide('queueList');
+  hide('queueTip');
+
+  const [queueRes, msRes] = await Promise.all([
+    sb.from('public_queue').select('*'),
+    sb.from('month_settings').select('*')
+  ]);
+
+  hide('queueLoading');
+
+  if (queueRes.error) {
+    toast('排单加载失败: ' + queueRes.error.message, 'error');
+    return;
+  }
+
+  const items = queueRes.data || [];
+  const monthSettings = {};
+  (msRes.data || []).forEach(ms => { monthSettings[ms.month] = ms; });
+
+  const curMonth = getCurrentMonth();
+
+  // 前面有多少单
+  if (currentUser) {
+    const myItems = items.filter(i => i.user_id === currentUser.id && i.status !== 'completed');
+    if (myItems.length) {
+      const firstMine = myItems[0];
+      const ahead = items.filter(i =>
+        i.status !== 'completed' &&
+        i.user_id !== currentUser.id &&
+        (i.schedule_month < firstMine.schedule_month ||
+          (i.schedule_month === firstMine.schedule_month &&
+            items.indexOf(i) < items.indexOf(firstMine)))
+      ).length;
+      const tip = document.getElementById('queueTip');
+      tip.innerHTML = `🔔 你前面还有 <strong>${ahead}</strong> 单`;
+      show(tip);
+    }
+  }
+
+  // 按月分组
+  const groups = {};
+  items.forEach(item => {
+    const m = item.schedule_month || '未排期';
+    if (!groups[m]) groups[m] = [];
+    groups[m].push(item);
+  });
+
+  // 月内排序：已完成沉底
+  Object.values(groups).forEach(list => {
+    list.sort((a, b) => {
+      if (a.status === 'completed' && b.status !== 'completed') return 1;
+      if (a.status !== 'completed' && b.status === 'completed') return -1;
+      return 0;  // 已被视图排好序
+    });
+  });
+
+  // 渲染
+  const container = document.getElementById('queueList');
+  show(container);
+
+  const months = Object.keys(groups).sort();
+  let html = '';
+
+  months.forEach(m => {
+    const list = groups[m];
+    const ms = monthSettings[m] || { normal_limit: 8, rush_limit: 2 };
+    const normalCount = list.filter(i => !i.is_rush && i.status !== 'completed').length;
+    const rushCount = list.filter(i => i.is_rush && i.status !== 'completed').length;
+    const normalFull = normalCount >= ms.normal_limit;
+    const rushFull = rushCount >= ms.rush_limit;
+    const isCurrentMonth = m === curMonth;
+    const isFuture = m > curMonth;
+    const collapsed = m < curMonth;
+
+    html += `<div class="queue-month-group">
+      <div class="queue-month-header" onclick="toggleQueueMonth(this)">
+        <h3>${fmtMonth(m)}${isFuture ? ' 🔜 预排' : ''}</h3>
+        <div class="stats">
+          <span>普通 ${normalCount}/${ms.normal_limit} ${normalFull ? '<span class="full">满</span>' : ''}</span>
+          <span>加塞 ${rushCount}/${ms.rush_limit} ${rushFull ? '<span class="full">满</span>' : ''}</span>
+        </div>
+        <span class="arrow ${collapsed ? 'collapsed' : ''}">▼</span>
+      </div>
+      <div class="queue-month-body" style="${collapsed ? 'display:none;' : ''}">`;
+
+    list.forEach(item => {
+      const isMine = currentUser && item.user_id === currentUser.id;
+      const nodes = Array.isArray(item.nodes) ? item.nodes : (typeof item.nodes === 'string' ? JSON.parse(item.nodes) : []);
+
+      html += `<div class="queue-card status-${item.status} ${isMine ? 'is-mine' : ''}"
+        onclick="onQueueCardClick('${item.id}', ${isMine})" >
+        ${isMine ? '<span class="mine-badge">我的</span>' : ''}
+        <div class="qc-left">
+          <div class="qc-no">${item.order_no}</div>
+          <div class="qc-name">${item.customer_name} · ${item.project_name}</div>
+          <div class="qc-sub">预估 ${item.estimated_time || '待定'}</div>
+        </div>
+        <div class="qc-right">
+          ${item.is_rush ? '<span class="qc-rush">加急</span>' : ''}
+          <div class="qc-dots">${renderNodeDots(nodes)}</div>
+        </div>
+      </div>`;
+    });
+
+    html += '</div></div>';
+  });
+
+  container.innerHTML = html || '<p style="text-align:center;padding:40px;color:var(--c-text-light);">暂无排单</p>';
+}
+
+function renderNodeDots(nodes) {
+  return nodes.map(n =>
+    `<span class="dot ${n.status === 'completed' ? 'done' : ''}" title="${n.node_name}"></span>`
+  ).join('');
+}
+
+function toggleQueueMonth(header) {
+  const body = header.nextElementSibling;
+  const arrow = header.querySelector('.arrow');
+  const hidden = body.style.display === 'none';
+  body.style.display = hidden ? '' : 'none';
+  arrow.classList.toggle('collapsed', !hidden);
+}
+
+function onQueueCardClick(id, isMine) {
+  if (isMine) {
+    navigateTo('orderDetail', { id });
+  } else {
+    toast('只能查看自己的订单详情哦', 'info');
+  }
+}
+
+/* ═══════════════════════════════════════════
+   6. 申请订单模块
+   ═══════════════════════════════════════════ */
+
+function initApplyForm() {
+  // 恢复草稿
+  const draft = localStorage.getItem('applyDraft');
+  if (draft) {
+    try {
+      const d = JSON.parse(draft);
+      if (d.name) document.getElementById('applyName').value = d.name;
+      if (d.contact) document.getElementById('applyContact').value = d.contact;
+      if (d.requirement) document.getElementById('applyReq').value = d.requirement;
+      if (d.budget) document.getElementById('applyBudget').value = d.budget;
+      if (d.expectedTime) document.getElementById('applyTime').value = d.expectedTime;
+      if (d.special) document.getElementById('applySpecial').value = d.special;
+    } catch(e) {}
+  }
+  renderAllImagePickers();
+  show('applyForm');
+  hide('applyResult');
+}
+
+function renderAllImagePickers() {
+  ['design', 'style', 'detail'].forEach(group => {
+    renderImagePicker(group);
+  });
+}
+
+function renderImagePicker(group) {
+  const containerId = group === 'design' ? 'designImgs' : group === 'style' ? 'styleImgs' : 'detailImgs';
+  const container = document.getElementById(containerId);
+  const imgs = applyImages[group] || [];
+  let html = '';
+  imgs.forEach((src, i) => {
+    html += `<div class="img-picker-cell">
+      <img src="${src}" onclick="previewImg('${src}')">
+      <div class="remove" onclick="event.stopPropagation();removeApplyImg('${group}',${i})">✕</div>
+    </div>`;
+  });
+  if (imgs.length < 6) {
+    html += `<div class="img-picker-cell" onclick="pickApplyImages('${group}')">+</div>`;
+  }
+  container.innerHTML = html;
+}
+
+function pickApplyImages(group) {
+  const input = document.getElementById('fileInput');
+  input.value = '';
+  input.multiple = true;
+  fileInputCallback = async (files) => {
+    const remain = 6 - (applyImages[group] || []).length;
+    const toUpload = Array.from(files).slice(0, remain);
+    for (const file of toUpload) {
+      const blob = await compressImage(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        applyImages[group].push(e.target.result);
+        renderImagePicker(group);
+      };
+      reader.readAsDataURL(blob);
+    }
+  };
+  input.click();
+}
+
+function removeApplyImg(group, index) {
+  applyImages[group].splice(index, 1);
+  renderImagePicker(group);
+}
+
+document.getElementById('fileInput').addEventListener('change', (e) => {
+  if (fileInputCallback && e.target.files.length) {
+    fileInputCallback(e.target.files);
+    fileInputCallback = null;
+  }
+});
+
+function getBodyMeasurements() {
+  const fields = ['height','weight','bust','waist','hip','shoulder','sleeve','length'];
+  const result = {};
+  fields.forEach(f => {
+    const v = document.getElementById('m_' + f).value;
+    if (v) result[f] = parseFloat(v);
+  });
+  return result;
+}
+
+async function submitApplication() {
+  const name = document.getElementById('applyName').value.trim();
+  const contact = document.getElementById('applyContact').value.trim();
+  if (!name || !contact) return toast('称呼和联系方式必填', 'error');
+
+  // 未登录 → 存草稿 → 弹登录
+  if (!currentUser) {
+    localStorage.setItem('applyDraft', JSON.stringify({
+      name, contact,
+      requirement: document.getElementById('applyReq').value,
+      budget: document.getElementById('applyBudget').value,
+      expectedTime: document.getElementById('applyTime').value,
+      special: document.getElementById('applySpecial').value,
+      isRush: document.getElementById('applyRush').classList.contains('on')
+    }));
+    toast('请先登录后再提交', 'info');
+    openAuthModal('login');
+    return;
+  }
+
+  const btn = document.getElementById('applySubmitBtn');
+  btn.disabled = true;
+  btn.textContent = '提交中…';
+
+  // 上传图片到 Storage
+  const uploadGroup = async (group) => {
+    const urls = [];
+    for (const dataUrl of applyImages[group]) {
+      if (dataUrl.startsWith('http')) {
+        urls.push(dataUrl);
+        continue;
+      }
+      // dataUrl → blob → upload
+      const resp = await fetch(dataUrl);
+      const blob = await resp.blob();
+      const file = new File([blob], 'img.jpg', { type: 'image/jpeg' });
+      const url = await uploadImage('app-images', file);
+      if (url) urls.push(url);
+    }
+    return urls;
+  };
+
+  const [designUrls, styleUrls, detailUrls] = await Promise.all([
+    uploadGroup('design'),
+    uploadGroup('style'),
+    uploadGroup('detail')
+  ]);
+
+  const { error } = await sb.from('applications').insert({
+    user_id: currentUser.id,
+    name,
+    contact,
+    requirement: document.getElementById('applyReq').value,
+    budget: document.getElementById('applyBudget').value,
+    expected_time: document.getElementById('applyTime').value,
+    is_rush: document.getElementById('applyRush').classList.contains('on'),
+    design_images: designUrls,
+    style_images: styleUrls,
+    detail_images: detailUrls,
+    body_measurements: getBodyMeasurements(),
+    special_notes: document.getElementById('applySpecial').value
+  });
+
+  btn.disabled = false;
+  btn.textContent = '提交申请';
+
+  if (error) {
+    toast('提交失败: ' + error.message, 'error');
+    return;
+  }
+
+  localStorage.removeItem('applyDraft');
+  toast('提交成功！', 'success');
+  hide('applyForm');
+  show('applyResult');
+}
+
+function trySubmitDraft() {
+  const draft = localStorage.getItem('applyDraft');
+  if (draft && currentUser) {
+    toast('检测到未提交的申请，请确认后提交', 'info');
+    navigateTo('apply');
+  }
+}
+
+function resetApplyForm() {
+  document.getElementById('applyName').value = '';
+  document.getElementById('applyContact').value = '';
+  document.getElementById('applyReq').value = '';
+  document.getElementById('applyBudget').value = '';
+  document.getElementById('applyTime').value = '';
+  document.getElementById('applySpecial').value = '';
+  document.getElementById('applyRush').classList.remove('on');
+  applyImages = { design: [], style: [], detail: [] };
+  hide('applyResult');
+  show('applyForm');
+  renderAllImagePickers();
+}
+
+/* ═══════════════════════════════════════════
+   7. 我的订单模块
+   ═══════════════════════════════════════════ */
+async function loadMyOrders() {
+  if (!currentUser) {
+    hide('ordersLoading');
+    hide('ordersList');
+    const empty = document.getElementById('ordersEmpty');
+    empty.style.display = 'flex';
+    empty.innerHTML = `<div class="result-icon">🔒</div>
+      <p style="color:var(--c-text-light);font-size:14px;margin-bottom:16px;">请先登录查看订单</p>
+      <button class="btn btn-primary" onclick="openAuthModal()">去登录</button>`;
+    return;
+  }
+
+  show('ordersLoading');
+  hide('ordersList');
+  hide('ordersEmpty');
+
+  // 加载我的申请
+  const { data: apps } = await sb.from('applications')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .order('created_at', { ascending: false })
+    .limit(5);
+
+  // 加载我的订单
+  const { data: orders, error } = await sb.from('orders')
+    .select('*, order_nodes(*)')
+    .eq('user_id', currentUser.id)
+    .order('created_at', { ascending: false });
+
+  // 加载未读消息数
+  const { data: unreadMsgs } = await sb.from('messages')
+    .select('order_id')
+    .neq('user_id', currentUser.id)
+    .eq('is_read', false);
+
+  hide('ordersLoading');
+
+  const unreadMap = {};
+  (unreadMsgs || []).forEach(m => {
+    unreadMap[m.order_id] = (unreadMap[m.order_id] || 0) + 1;
+  });
+
+  if (error) {
+    toast('订单加载失败: ' + error.message, 'error');
+    return;
+  }
+
+  const container = document.getElementById('ordersList');
+  show(container);
+  let html = '';
+
+  // 显示申请状态
+  if (apps && apps.length) {
+    const myAppBox = document.getElementById('myAppStatus');
+    show(myAppBox);
+    let appHtml = '<h3 style="font-size:15px;margin-bottom:8px;">📝 我的申请</h3>';
+    apps.forEach(app => {
+      const statusColor = app.status === 'pending' ? 'var(--c-beige)' :
+        app.status === 'accepted' ? 'var(--c-light-purple)' : '#f5e0e0';
+      appHtml += `<div class="card" style="padding:12px 14px;display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-size:14px;font-weight:500;">${app.requirement ? app.requirement.slice(0,20) + '…' : '定制申请'}</div>
+          <div style="font-size:12px;color:var(--c-text-light);">${fmtDate(app.created_at)}</div>
+        </div>
+        <span class="oc-status" style="background:${statusColor}">${appStatusText(app.status)}</span>
+        ${app.status === 'rejected' && app.reject_reason ? `<div style="font-size:12px;color:var(--c-danger);margin-top:4px;">原因: ${app.reject_reason}</div>` : ''}
+      </div>`;
+    });
+    myAppBox.innerHTML = appHtml;
+  }
+
+  if (!orders || !orders.length) {
+    document.getElementById('ordersEmpty').style.display = 'flex';
+    document.getElementById('ordersEmpty').innerHTML = `<div class="result-icon">📦</div>
+      <p style="color:var(--c-text-light);font-size:14px;">暂无订单</p>`;
+    return;
+  }
+
+  orders.forEach(o => {
+    const hasUnread = unreadMap[o.id];
+    html += `<div class="order-card" onclick="navigateTo('orderDetail',{id:'${o.id}'})">
+      ${hasUnread ? '<div class="unread-dot"></div>' : ''}
+      <div class="oc-no">${o.order_no}</div>
+      <div class="oc-title">${o.project_name}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
+        <span class="oc-status ${o.status}">${statusText(o.status)}</span>
+        <span style="font-size:12px;color:var(--c-text-light);">${fmtDate(o.updated_at)}</span>
+      </div>
+    </div>`;
+  });
+
+  container.innerHTML = html;
+}
+
+/* ═══════════════════════════════════════════
+   8. 订单详情模块
+   ═══════════════════════════════════════════ */
+async function loadOrderDetail(id) {
+  const container = document.getElementById('orderDetailContent');
+  container.innerHTML = '<div class="skeleton skeleton-card"></div><div class="skeleton skeleton-card" style="height:200px;"></div>';
+
+  // 并行加载
+  const [orderRes, nodesRes, matsRes, msgsRes, photosRes] = await Promise.all([
+    sb.from('orders').select('*').eq('id', id).single(),
+    sb.from('order_nodes').select('*').eq('order_id', id).order('sort_order'),
+    sb.from('materials').select('*').eq('order_id', id).order('created_at'),
+    sb.from('messages').select('*, profiles:user_id(nickname, is_admin)').eq('order_id', id).order('created_at'),
+    sb.from('node_photos').select('*, order_nodes!inner(order_id)').eq('order_nodes.order_id', id)
+  ]);
+
+  if (orderRes.error) {
+    toast('订单加载失败: ' + orderRes.error.message, 'error');
+    container.innerHTML = '<p style="text-align:center;padding:40px;">加载失败</p>';
+    return;
+  }
+
+  const order = orderRes.data;
+  const nodes = nodesRes.data || [];
+  const mats = matsRes.data || [];
+  const msgs = msgsRes.data || [];
+
+  // 按 node_id 归类照片
+  const photoMap = {};
+  (photosRes.data || []).forEach(p => {
+    if (!photoMap[p.node_id]) photoMap[p.node_id] = [];
+    photoMap[p.node_id].push(p);
+  });
+
+  document.getElementById('odTitle').textContent = order.project_name;
+
+  // 标记消息已读
+  if (currentUser) {
+    sb.from('messages')
+      .update({ is_read: true })
+      .eq('order_id', id)
+      .neq('user_id', currentUser.id)
+      .eq('is_read', false)
+      .then(() => {});
+  }
+
+  let html = '';
+
+  // 头部信息
+  html += `<div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <span class="oc-status ${order.status}">${statusText(order.status)}</span>
+      <span style="font-size:13px;color:var(--c-text-light);">${order.order_no}</span>
+    </div>
+    <div style="margin-top:8px;font-size:14px;">
+      <div>排单月份：${fmtMonth(order.schedule_month)}</div>
+      <div>预估完成：${order.estimated_time || '待定'}</div>
+    </div>
+  </div>`;
+
+  // 备注区
+  const canEditRemark = order.status === 'queued';
+  html += `<div class="card">
+    <h3 style="font-size:15px;margin-bottom:8px;">📝 备注</h3>
+    <textarea id="remarkInput" ${canEditRemark ? '' : 'disabled'} placeholder="${canEditRemark ? '在此添加备注…' : '排队中才可编辑备注'}"
+      style="${canEditRemark ? '' : 'background:#f5f0f5;'}">${order.remark || ''}</textarea>
+    ${canEditRemark ? `<button class="btn btn-sm btn-secondary" style="margin-top:8px;" onclick="saveRemark('${order.id}')">保存修改</button>` : '<p style="font-size:12px;color:var(--c-text-light);margin-top:4px;">⚠️ 进入制作后备注将锁定</p>'}
+  </div>`;
+
+  // 时间线
+  html += `<div class="card" style="padding-bottom:0;">
+    <h3 style="font-size:15px;margin-bottom:16px;">📋 制作进度</h3>
+    <div class="timeline">`;
+
+  let currentFound = false;
+  nodes.forEach((n, i) => {
+    const isDone = n.status === 'completed';
+    const isSkip = n.status === 'skipped';
+    let className = '';
+    if (isDone) className = 'done';
+    else if (isSkip) className = 'skipped';
+    else if (!currentFound) { className = 'current'; currentFound = true; }
+
+    const photos = photoMap[n.id] || [];
+    const isLast = i === nodes.length - 1;
+
+    html += `<div class="timeline-node ${className}">
+      <div class="timeline-line">
+        <div class="timeline-dot">${isDone ? '✓' : isSkip ? '—' : ''}</div>
+        ${!isLast ? '<div class="timeline-connector"></div>' : ''}
+      </div>
+      <div class="tl-content">
+        <div class="tl-name">${n.node_name}</div>
+        ${isDone ? `<div class="tl-time">${fmtDate(n.completed_at)}</div>` : ''}
+        ${photos.length ? `<div class="tl-photos">${photos.map(p => `<img src="${p.image_url}" onclick="previewImg('${p.image_url}')">`).join('')}</div>` : ''}
+      </div>
+    </div>`;
+  });
+
+  html += '</div></div>';
+
+  // 材料清单
+  if (mats.length) {
+    let total = 0;
+    html += `<div class="card">
+      <h3 style="font-size:15px;margin-bottom:12px;">🧵 材料清单</h3>`;
+    mats.forEach(m => {
+      const subtotal = (m.quantity || 0) * (m.unit_price || 0);
+      total += subtotal;
+      html += `<div class="material-card">
+        <div class="mc-name">${m.name}</div>
+        ${m.specification ? `<div class="mc-spec">${m.specification}</div>` : ''}
+        <div class="mc-row">
+          <span>${m.quantity}${m.unit} × ¥${m.unit_price} = ¥${subtotal.toFixed(2)}</span>
+          <span style="color:${m.status === 'arrived' ? 'var(--c-success)' : 'var(--c-text-light)'};">
+            ${matStatusText(m.status)}${m.arrival_date ? ' ' + fmtDay(m.arrival_date) : ''}
+          </span>
+        </div>
+        ${m.merchant_image || m.actual_image ? `<div class="mc-images">
+          ${m.merchant_image ? `<div class="mc-img-box" onclick="previewImg('${m.merchant_image}')"><img src="${m.merchant_image}"><div class="mc-label">商家图</div></div>` : ''}
+          ${m.actual_image ? `<div class="mc-img-box" onclick="previewImg('${m.actual_image}')"><img src="${m.actual_image}"><div class="mc-label">实拍图</div></div>` : ''}
+        </div>` : ''}
+      </div>`;
+    });
+    html += `<div class="material-total">合计：¥${total.toFixed(2)}</div></div>`;
+  }
+
+  // 留言区
+  html += `<div class="card" style="padding-bottom:0;">
+    <h3 style="font-size:15px;margin-bottom:12px;">💬 留言</h3>
+    <div class="chat-area" id="chatArea">`;
+
+  msgs.forEach(m => {
+    const isMine = currentUser && m.user_id === currentUser.id;
+    const senderName = m.profiles?.is_admin ? '🏠 店长' : (m.profiles?.nickname || '用户');
+    if (m.is_notification) {
+      html += `<div class="chat-bubble notification"><div class="cb-body">📢 ${m.content}</div>
+        <div class="cb-time">${fmtDate(m.created_at)}</div></div>`;
+    } else {
+      html += `<div class="chat-bubble ${isMine ? 'mine' : 'other'}">
+        ${!isMine ? `<div class="cb-name">${senderName}</div>` : ''}
+        <div class="cb-body">${m.content}${m.image_url ? `<br><img src="${m.image_url}" onclick="previewImg('${m.image_url}')">` : ''}</div>
+        <div class="cb-time" style="${isMine ? 'text-align:right;' : ''}">${fmtDate(m.created_at)}</div>
+      </div>`;
+    }
+  });
+
+  html += `</div></div>`;
+
+  // 留言输入
+  if (currentUser) {
+    html += `<div class="chat-input-bar" style="position:sticky;bottom:calc(var(--tab-height) + var(--safe-bottom));">
+      <textarea id="msgInput" rows="1" placeholder="输入留言…"></textarea>
+      <button class="chat-img-btn" onclick="sendMsgImage('${order.id}')">📷</button>
+      <button class="btn btn-primary btn-sm" onclick="sendMessage('${order.id}')">发送</button>
+    </div>`;
+  }
+
+  container.innerHTML = html;
+
+  // 滚动到聊天区域底部
+  setTimeout(() => {
+    const chatArea = document.getElementById('chatArea');
+    if (chatArea) chatArea.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, 200);
+}
+
+/** 保存备注 */
+async function saveRemark(orderId) {
+  const newRemark = document.getElementById('remarkInput').value;
+
+  // 获取旧备注
+  const { data: old } = await sb.from('orders').select('remark').eq('id', orderId).single();
+  const oldRemark = old?.remark || '';
+
+  if (newRemark === oldRemark) {
+    toast('备注未修改', 'info');
+    return;
+  }
+
+  // 写入变更日志
+  const { error: logErr } = await sb.from('remark_logs').insert({
+    order_id: orderId,
+    user_id: currentUser.id,
+    old_remark: oldRemark,
+    new_remark: newRemark
+  });
+
+  // 更新订单备注
+  const { error } = await sb.from('orders')
+    .update({ remark: newRemark })
+    .eq('id', orderId);
+
+  if (error) {
+    toast('保存失败: ' + error.message, 'error');
+    return;
+  }
+  toast('备注已更新', 'success');
+}
+
+/** 发送留言 */
+async function sendMessage(orderId) {
+  const input = document.getElementById('msgInput');
+  const content = input.value.trim();
+  if (!content) return;
+
+  const { error } = await sb.from('messages').insert({
+    order_id: orderId,
+    user_id: currentUser.id,
+    content
+  });
+
+  if (error) {
+    toast('发送失败: ' + error.message, 'error');
+    return;
+  }
+  input.value = '';
+  loadOrderDetail(orderId);
+}
+
+/** 发送图片留言 */
+function sendMsgImage(orderId) {
+  const input = document.getElementById('fileInput');
+  input.value = '';
+  input.multiple = false;
+  fileInputCallback = async (files) => {
+    const url = await uploadImage('msg-images', files[0]);
+    if (url) {
+      const { error } = await sb.from('messages').insert({
+        order_id: orderId,
+        user_id: currentUser.id,
+        content: '',
+        image_url: url
+      });
+      if (error) toast('发送失败', 'error');
+      else loadOrderDetail(orderId);
+    }
+  };
+  input.click();
+}
+
+/* ═══════════════════════════════════════════
+   9. 个人中心模块
+   ═══════════════════════════════════════════ */
+function renderProfile() {
+  const container = document.getElementById('profileContent');
+
+  if (!currentUser) {
+    container.innerHTML = `
+      <div class="profile-header">
+        <div class="avatar">👤</div>
+        <div class="name">未登录</div>
+        <div class="phone">登录后查看更多</div>
+      </div>
+      <div class="profile-menu">
+        <div class="profile-menu-item" onclick="openAuthModal('login')">
+          <div class="pmi-icon" style="background:var(--c-light-purple);color:var(--c-primary);">🔑</div>
+          <div class="pmi-text">登录 / 注册</div>
+          <span class="pmi-arrow">›</span>
+        </div>
+      </div>`;
+    return;
+  }
+
+  const isAdmin = currentProfile?.is_admin;
+  container.innerHTML = `
+    <div class="profile-header">
+      <div class="avatar">${(currentProfile?.nickname || '?')[0]}</div>
+      <div class="name">${currentProfile?.nickname || '用户'}</div>
+      <div class="phone">${currentProfile?.phone || ''}</div>
+    </div>
+    <div class="profile-menu">
+      <div class="profile-menu-item" onclick="openEditNickname()">
+        <div class="pmi-icon" style="background:var(--c-light-purple);color:var(--c-primary);">✏️</div>
+        <div class="pmi-text">修改昵称</div>
+        <span class="pmi-arrow">›</span>
+      </div>
+      <div class="profile-menu-item" onclick="openChangePwd()">
+        <div class="pmi-icon" style="background:var(--c-light-purple);color:var(--c-primary);">🔒</div>
+        <div class="pmi-text">修改密码</div>
+        <span class="pmi-arrow">›</span>
+      </div>
+      ${isAdmin ? `<div class="profile-menu-item" onclick="navigateTo('admin')" id="adminEntryCard">
+        <div class="pmi-icon" style="background:var(--c-primary);color:#fff;">🔧</div>
+        <div class="pmi-text">进入后台</div>
+        <span class="pmi-arrow">›</span>
+        <span class="pmi-badge" id="adminBadge" style="display:none;"></span>
+      </div>` : ''}
+      <div class="profile-menu-item" onclick="doLogout()">
+        <div class="pmi-icon" style="background:#f5e0e0;color:var(--c-danger);">🚪</div>
+        <div class="pmi-text" style="color:var(--c-danger);">退出登录</div>
+        <span class="pmi-arrow">›</span>
+      </div>
+    </div>`;
+
+  // 检查管理员待办
+  if (isAdmin) loadAdminBadge();
+}
+
+async function loadAdminBadge() {
+  const { count } = await sb.from('applications')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'pending');
+  const badge = document.getElementById('adminBadge');
+  if (badge && count > 0) {
+    badge.style.display = '';
+  }
+}
+
+function openEditNickname() {
+  const body = document.getElementById('commonModalBody');
+  body.innerHTML = `<h3>修改昵称</h3>
+    <div class="form-group">
+      <input id="newNickname" type="text" value="${currentProfile?.nickname || ''}" placeholder="新昵称">
+    </div>
+    <button class="btn btn-primary btn-block" onclick="saveNickname()">保存</button>`;
+  document.getElementById('commonModal').classList.add('active');
+}
+
+async function saveNickname() {
+  const nick = document.getElementById('newNickname').value.trim();
+  if (!nick) return toast('昵称不能为空', 'error');
+  const { error } = await sb.from('profiles')
+    .update({ nickname: nick })
+    .eq('id', currentUser.id);
+  if (error) return toast('修改失败: ' + error.message, 'error');
+  currentProfile.nickname = nick;
+  toast('昵称已更新', 'success');
+  closeCommonModal();
+  renderProfile();
+}
+
+function openChangePwd() {
+  const body = document.getElementById('commonModalBody');
+  body.innerHTML = `<h3>修改密码</h3>
+    <div class="form-group">
+      <label>新密码</label>
+      <input id="newPwd" type="password" placeholder="至少6位">
+    </div>
+    <div class="form-group">
+      <label>确认密码</label>
+      <input id="confirmPwd" type="password" placeholder="再次输入">
+    </div>
+    <button class="btn btn-primary btn-block" onclick="savePwd()">保存</button>`;
+  document.getElementById('commonModal').classList.add('active');
+}
+
+async function savePwd() {
+  const pwd = document.getElementById('newPwd').value;
+  const confirm = document.getElementById('confirmPwd').value;
+  if (pwd.length < 6) return toast('密码至少6位', 'error');
+  if (pwd !== confirm) return toast('两次密码不一致', 'error');
+
+  const { error } = await sb.auth.updateUser({ password: pwd });
+  if (error) return toast('修改失败: ' + error.message, 'error');
+  toast('密码已更新', 'success');
+  closeCommonModal();
+}
+
+function closeCommonModal() {
+  document.getElementById('commonModal').classList.remove('active');
+}
+
+/* ═══════════════════════════════════════════
+   10. 后台管理模块
+   ═══════════════════════════════════════════ */
+let adminCurrentTab = 'dashboard';
+
+function initAdmin(tab) {
+  if (!currentProfile?.is_admin) {
+    toast('无管理权限', 'error');
+    navigateTo('profile');
+    return;
+  }
+  adminCurrentTab = tab || 'dashboard';
+  renderAdminNav();
+  loadAdminTab();
+}
+
+function renderAdminNav() {
+  const tabs = [
+    { id: 'dashboard', label: '📊 面板' },
+    { id: 'applications', label: '📝 申请' },
+    { id: 'adminOrders', label: '📦 订单' },
+    { id: 'adminQueue', label: '📋 排单' },
+    { id: 'adminWorks', label: '🎨 作品' }
+  ];
+  document.getElementById('adminNav').innerHTML = tabs.map(t =>
+    `<button class="admin-nav-item ${adminCurrentTab === t.id ? 'active' : ''}"
+      onclick="switchAdminTab('${t.id}')">${t.label}</button>`
+  ).join('');
+}
+
+function switchAdminTab(tab) {
+  adminCurrentTab = tab;
+  renderAdminNav();
+  loadAdminTab();
+  location.hash = 'admin/' + tab;
+}
+
+async function loadAdminTab() {
+  const body = document.getElementById('adminBody');
+
+  switch (adminCurrentTab) {
+    case 'dashboard': return loadAdminDashboard(body);
+    case 'applications': return loadAdminApps(body);
+    case 'adminOrders': return loadAdminOrders(body);
+    case 'adminQueue': return loadAdminQueue(body);
+    case 'adminWorks': return loadAdminWorks(body);
+  }
+}
+
+/* ── 后台：数据面板 ── */
+async function loadAdminDashboard(body) {
+  body.innerHTML = '<div class="page-content"><div class="skeleton skeleton-card"></div></div>';
+
+  const [apps, orders, works] = await Promise.all([
+    sb.from('applications').select('status'),
+    sb.from('orders').select('status'),
+    sb.from('works').select('id', { count: 'exact', head: true })
+  ]);
+
+  const pendingApps = (apps.data || []).filter(a => a.status === 'pending').length;
+  const activeOrders = (orders.data || []).filter(o => o.status !== 'completed').length;
+  const completedOrders = (orders.data || []).filter(o => o.status === 'completed').length;
+
+  body.innerHTML = `
+    <div class="stat-grid">
+      <div class="stat-card"><div class="num">${pendingApps}</div><div class="label">待处理申请</div></div>
+      <div class="stat-card"><div class="num">${activeOrders}</div><div class="label">进行中订单</div></div>
+      <div class="stat-card"><div class="num">${completedOrders}</div><div class="label">已完成订单</div></div>
+      <div class="stat-card"><div class="num">${works.count || 0}</div><div class="label">作品数量</div></div>
+    </div>`;
+}
+
+/* ── 后台：申请管理 ── */
+let adminAppTab = 'pending';
+
+async function loadAdminApps(body) {
+  body.innerHTML = `<div class="app-tabs">
+    <button class="app-tab ${adminAppTab==='pending'?'active':''}" onclick="adminAppTab='pending';loadAdminApps(document.getElementById('adminBody'))">待处理</button>
+    <button class="app-tab ${adminAppTab==='accepted'?'active':''}" onclick="adminAppTab='accepted';loadAdminApps(document.getElementById('adminBody'))">已接单</button>
+    <button class="app-tab ${adminAppTab==='rejected'?'active':''}" onclick="adminAppTab='rejected';loadAdminApps(document.getElementById('adminBody'))">已拒绝</button>
+  </div>
+  <div id="adminAppList" class="admin-list" style="margin-top:12px;"></div>`;
+
+  const { data, error } = await sb.from('applications')
+    .select('*')
+    .eq('status', adminAppTab)
+    .order('created_at', { ascending: false });
+
+  if (error) return toast('加载失败', 'error');
+
+  const list = document.getElementById('adminAppList');
+  if (!data || !data.length) {
+    list.innerHTML = '<p style="text-align:center;padding:40px;color:var(--c-text-light);">暂无数据</p>';
+    return;
+  }
+
+  list.innerHTML = data.map(app => `
+    <div class="admin-card">
+      <div class="ac-title">${app.name} · ${app.contact}</div>
+      <div class="ac-sub">${app.requirement || '未填写需求'}</div>
+      <div class="ac-sub">预算: ${app.budget || '-'} | 期望: ${app.expected_time || '-'} ${app.is_rush ? '| 🔥 加急' : ''}</div>
+      <div class="ac-sub">${fmtDate(app.created_at)}</div>
+      ${app.design_images?.length ? `<div style="display:flex;gap:4px;margin-top:8px;flex-wrap:wrap;">
+        ${app.design_images.map(u => `<img src="${u}" style="width:48px;height:48px;border-radius:6px;object-fit:cover;cursor:pointer;" onclick="previewImg('${u}')">`).join('')}
+      </div>` : ''}
+      ${adminAppTab === 'pending' ? `<div class="ac-actions">
+        <button class="btn btn-sm btn-primary" onclick="acceptApp('${app.id}','${app.name}','${app.contact}',${app.is_rush})">接单</button>
+        <button class="btn btn-sm btn-ghost" onclick="rejectApp('${app.id}')">拒绝</button>
+      </div>` : ''}
+      ${app.status === 'rejected' && app.reject_reason ? `<div style="color:var(--c-danger);font-size:12px;margin-top:8px;">拒绝原因: ${app.reject_reason}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+/** 接单 */
+function acceptApp(appId, name, contact, isRush) {
+  const body = document.getElementById('commonModalBody');
+  const curMonth = getCurrentMonth();
+  body.innerHTML = `<h3>接单确认</h3>
+    <div class="form-group"><label>项目名称</label><input id="accProject" type="text" placeholder="如：汉服·对襟褙子"></div>
+    <div class="form-group"><label>排单月份</label><input id="accMonth" type="month" value="${curMonth}"></div>
+    <div class="form-group"><label>预估完成</label><input id="accEstimate" type="text" placeholder="如：12月上旬"></div>
+    <button class="btn btn-primary btn-block" onclick="doAcceptApp('${appId}','${name}','${contact}',${isRush})">确认建单</button>`;
+  document.getElementById('commonModal').classList.add('active');
+}
+
+async function doAcceptApp(appId, name, contact, isRush) {
+  const project = document.getElementById('accProject').value.trim() || '定制项目';
+  const month = document.getElementById('accMonth').value;
+  const estimate = document.getElementById('accEstimate').value.trim();
+
+  // 查找对应用户
+  const { data: app } = await sb.from('applications').select('user_id').eq('id', appId).single();
+
+  const { data, error } = await sb.rpc('create_order_with_nodes', {
+    p_user_id: app?.user_id || null,
+    p_application_id: appId,
+    p_project_name: project,
+    p_customer_name: name,
+    p_customer_contact: contact,
+    p_is_rush: isRush,
+    p_schedule_month: month,
+    p_estimated_time: estimate
+  });
+
+  if (error) {
+    toast('建单失败: ' + error.message, 'error');
+    return;
+  }
+
+  toast(`订单已创建：${data.order_no}`, 'success');
+  closeCommonModal();
+  loadAdminApps(document.getElementById('adminBody'));
+}
+
+function rejectApp(appId) {
+  const reason = prompt('请输入拒绝原因（可选）：');
+  if (reason === null) return; // 取消
+  sb.from('applications')
+    .update({ status: 'rejected', reject_reason: reason })
+    .eq('id', appId)
+    .then(({ error }) => {
+      if (error) toast('操作失败', 'error');
+      else {
+        toast('已拒绝', 'info');
+        loadAdminApps(document.getElementById('adminBody'));
+      }
+    });
+}
+
+/* ── 后台：订单管理 ── */
+async function loadAdminOrders(body) {
+  body.innerHTML = `<div class="admin-search"><input id="orderSearch" type="text" placeholder="搜索订单号/客户名/项目名" oninput="searchAdminOrders()"></div>
+    <div style="padding:0 16px 12px;">
+      <button class="btn btn-sm btn-primary" onclick="openManualOrder()">+ 手动建单</button>
+    </div>
+    <div id="adminOrderList" class="admin-list"></div>`;
+
+  searchAdminOrders();
+}
+
+async function searchAdminOrders() {
+  const q = (document.getElementById('orderSearch')?.value || '').trim().toLowerCase();
+  const { data, error } = await sb.from('orders')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) return toast('加载失败', 'error');
+
+  const filtered = q ? (data || []).filter(o =>
+    o.order_no.toLowerCase().includes(q) ||
+    o.customer_name.toLowerCase().includes(q) ||
+    o.project_name.toLowerCase().includes(q)
+  ) : (data || []);
+
+  const list = document.getElementById('adminOrderList');
+  if (!filtered.length) {
+    list.innerHTML = '<p style="text-align:center;padding:40px;color:var(--c-text-light);">无结果</p>';
+    return;
+  }
+
+  list.innerHTML = filtered.map(o => `
+    <div class="admin-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div class="ac-title">${o.order_no}</div>
+        <span class="oc-status ${o.status}">${statusText(o.status)}</span>
+      </div>
+      <div class="ac-sub">${o.customer_name} · ${o.project_name}</div>
+      <div class="ac-sub">${fmtMonth(o.schedule_month)} | ${o.estimated_time || '待定'} ${o.is_rush ? '| 🔥 加急' : ''}</div>
+      <div class="ac-actions">
+        <button class="btn btn-sm btn-secondary" onclick="openAdminOrderDetail('${o.id}')">管理</button>
+        <button class="btn btn-sm btn-ghost" onclick="copyShareLink('${o.share_token}')">分享链接</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function copyShareLink(token) {
+  const url = `${location.origin}${location.pathname}?token=${token}`;
+  navigator.clipboard.writeText(url).then(() => toast('链接已复制', 'success'))
+    .catch(() => {
+      prompt('复制此链接：', url);
+    });
+}
+
+/** 手动建单 */
+function openManualOrder() {
+  const body = document.getElementById('commonModalBody');
+  body.innerHTML = `<h3>手动建单</h3>
+    <div class="form-group"><label>客户名 <span class="required">*</span></label><input id="moName" type="text"></div>
+    <div class="form-group"><label>联系方式</label><input id="moContact" type="text"></div>
+    <div class="form-group"><label>项目名称 <span class="required">*</span></label><input id="moProject" type="text"></div>
+    <div class="form-group"><label>排单月份</label><input id="moMonth" type="month" value="${getCurrentMonth()}"></div>
+    <div class="form-group"><label>预估完成</label><input id="moEstimate" type="text"></div>
+    <div class="switch-row"><label>加急</label><div id="moRush" class="toggle" onclick="this.classList.toggle('on')"></div></div>
+    <button class="btn btn-primary btn-block" style="margin-top:16px;" onclick="doManualOrder()">创建订单</button>`;
+  document.getElementById('commonModal').classList.add('active');
+}
+
+async function doManualOrder() {
+  const name = document.getElementById('moName').value.trim();
+  const project = document.getElementById('moProject').value.trim();
+  if (!name || !project) return toast('客户名和项目名必填', 'error');
+
+  const { data, error } = await sb.rpc('create_order_with_nodes', {
+    p_user_id: null,
+    p_application_id: null,
+    p_project_name: project,
+    p_customer_name: name,
+    p_customer_contact: document.getElementById('moContact').value.trim(),
+    p_is_rush: document.getElementById('moRush').classList.contains('on'),
+    p_schedule_month: document.getElementById('moMonth').value,
+    p_estimated_time: document.getElementById('moEstimate').value.trim()
+  });
+
+  if (error) return toast('创建失败: ' + error.message, 'error');
+  toast(`订单 ${data.order_no} 已创建`, 'success');
+  closeCommonModal();
+
+  // 显示分享链接
+  copyShareLink(data.share_token);
+  searchAdminOrders();
+}
+
+/** 管理员订单详情 */
+async function openAdminOrderDetail(orderId) {
+  const body = document.getElementById('commonModalBody');
+  body.innerHTML = '<div class="skeleton skeleton-card"></div>';
+  document.getElementById('commonModal').classList.add('active');
+
+  const [oRes, nRes, mRes, rlRes] = await Promise.all([
+    sb.from('orders').select('*').eq('id', orderId).single(),
+    sb.from('order_nodes').select('*').eq('order_id', orderId).order('sort_order'),
+    sb.from('materials').select('*').eq('order_id', orderId).order('created_at'),
+    sb.from('remark_logs').select('*').eq('order_id', orderId).order('created_at', { ascending: false })
+  ]);
+
+  const order = oRes.data;
+  const nodes = nRes.data || [];
+  const mats = mRes.data || [];
+  const remarkLogs = rlRes.data || [];
+
+  let html = `<h3>管理 ${order.order_no}</h3>`;
+
+  // 基本信息编辑
+  html += `<div class="card">
+    <div class="form-group"><label>状态</label>
+      <select id="adOrdStatus" onchange="updateOrderField('${orderId}','status',this.value)">
+        <option value="queued" ${order.status==='queued'?'selected':''}>排队中</option>
+        <option value="in_progress" ${order.status==='in_progress'?'selected':''}>制作中</option>
+        <option value="completed" ${order.status==='completed'?'selected':''}>已完成</option>
+      </select>
+    </div>
+    <div class="form-group"><label>排单月份</label>
+      <input type="month" value="${order.schedule_month}" onchange="updateOrderField('${orderId}','schedule_month',this.value)">
+    </div>
+    <div class="form-group"><label>预估完成</label>
+      <input type="text" value="${order.estimated_time || ''}" onchange="updateOrderField('${orderId}','estimated_time',this.value)">
+    </div>
+    <div class="switch-row"><label>加急</label>
+      <div class="toggle ${order.is_rush?'on':''}" onclick="this.classList.toggle('on');updateOrderField('${orderId}','is_rush',this.classList.contains('on'))"></div>
+    </div>
+  </div>`;
+
+  // 节点管理
+  html += `<div class="card">
+    <h3 style="font-size:15px;margin-bottom:12px;">节点管理</h3>`;
+  nodes.forEach(n => {
+    html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:8px;background:var(--c-bg);border-radius:8px;">
+      <span style="flex:1;font-size:14px;${n.status==='skipped'?'text-decoration:line-through;color:var(--c-gray-purple);':''}">${n.node_name}</span>
+      <select style="width:auto;font-size:12px;padding:4px 8px;" onchange="updateNodeStatus('${orderId}','${n.id}',this.value)">
+        <option value="pending" ${n.status==='pending'?'selected':''}>待处理</option>
+        <option value="completed" ${n.status==='completed'?'selected':''}>已完成</option>
+        <option value="skipped" ${n.status==='skipped'?'selected':''}>跳过</option>
+      </select>
+      <button class="btn btn-sm btn-ghost" style="padding:4px 8px;font-size:11px;" onclick="uploadNodePhoto('${orderId}','${n.id}')">📷</button>
+      <button class="btn btn-sm btn-ghost" style="padding:4px 8px;font-size:11px;color:var(--c-danger);" onclick="deleteNode('${orderId}','${n.id}')">✕</button>
+    </div>`;
+  });
+  html += `<div style="display:flex;gap:8px;margin-top:8px;">
+    <input id="newNodeName" type="text" placeholder="新节点名" style="flex:1;">
+    <button class="btn btn-sm btn-secondary" onclick="addNode('${orderId}')">添加</button>
+  </div></div>`;
+
+  // 材料管理
+  html += `<div class="card">
+    <h3 style="font-size:15px;margin-bottom:12px;">材料管理</h3>`;
+  mats.forEach(m => {
+    html += `<div style="padding:8px;background:var(--c-bg);border-radius:8px;margin-bottom:8px;font-size:13px;">
+      <div style="font-weight:600;">${m.name} ${m.specification ? '(' + m.specification + ')' : ''}</div>
+      <div>${m.quantity}${m.unit} × ¥${m.unit_price}</div>
+      <div style="display:flex;gap:8px;margin-top:4px;">
+        <select style="width:auto;font-size:12px;padding:4px;" onchange="updateMaterial('${m.id}','status',this.value)">
+          <option value="pending" ${m.status==='pending'?'selected':''}>待采购</option>
+          <option value="ordered" ${m.status==='ordered'?'selected':''}>已下单</option>
+          <option value="arrived" ${m.status==='arrived'?'selected':''}>已到货</option>
+        </select>
+        <button class="btn btn-sm btn-ghost" style="padding:2px 8px;font-size:11px;color:var(--c-danger);" onclick="deleteMaterial('${orderId}','${m.id}')">删除</button>
+      </div>
+    </div>`;
+  });
+  html += `<button class="btn btn-sm btn-secondary" onclick="openAddMaterial('${orderId}')">+ 添加材料</button></div>`;
+
+  // 备注变更记录
+  if (remarkLogs.length) {
+    html += `<div class="card">
+      <h3 style="font-size:15px;margin-bottom:12px;">备注变更记录</h3>`;
+    remarkLogs.forEach(log => {
+      html += `<div style="padding:8px;background:var(--c-bg);border-radius:8px;margin-bottom:8px;font-size:13px;">
+        <div style="color:var(--c-text-light);">${fmtDate(log.created_at)}</div>
+        <div>"${log.old_remark || '(空)'}" → "${log.new_remark || '(空)'}"</div>
+        ${!log.acknowledged ? `<button class="btn btn-sm btn-ghost" style="margin-top:4px;padding:2px 10px;font-size:11px;" onclick="ackRemarkLog('${orderId}','${log.id}')">标记已知晓</button>` : '<span style="color:var(--c-success);font-size:11px;">✓ 已知晓</span>'}
+      </div>`;
+    });
+    html += '</div>';
+  }
+
+  // 发通知
+  html += `<div class="card">
+    <h3 style="font-size:15px;margin-bottom:12px;">发送通知/留言</h3>
+    <div class="form-group"><textarea id="adminMsg" placeholder="输入内容…"></textarea></div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-sm btn-primary" onclick="adminSendMsg('${orderId}',false)">发送留言</button>
+      <button class="btn btn-sm btn-secondary" onclick="adminSendMsg('${orderId}',true)">发通知</button>
+    </div>
+  </div>`;
+
+  body.innerHTML = html;
+}
+
+async function updateOrderField(orderId, field, value) {
+  const update = {};
+  update[field] = value;
+  const { error } = await sb.from('orders').update(update).eq('id', orderId);
+  if (error) toast('更新失败: ' + error.message, 'error');
+  else toast('已更新', 'success');
+}
+
+async function updateNodeStatus(orderId, nodeId, status) {
+  const update = { status };
+  if (status === 'completed') update.completed_at = new Date().toISOString();
+  else update.completed_at = null;
+
+  const { error } = await sb.from('order_nodes').update(update).eq('id', nodeId);
+  if (error) toast('更新失败: ' + error.message, 'error');
+  else {
+    toast('节点已更新', 'success');
+    // 刷新详情
+    openAdminOrderDetail(orderId);
+  }
+}
+
+function uploadNodePhoto(orderId, nodeId) {
+  const input = document.getElementById('fileInput');
+  input.value = '';
+  input.multiple = true;
+  fileInputCallback = async (files) => {
+    for (const file of files) {
+      const url = await uploadImage('order-images', file);
+      if (url) {
+        await sb.from('node_photos').insert({ node_id: nodeId, image_url: url });
+      }
+    }
+    toast('照片已上传', 'success');
+    openAdminOrderDetail(orderId);
+  };
+  input.click();
+}
+
+async function deleteNode(orderId, nodeId) {
+  if (!confirm('确定删除此节点？')) return;
+  const { error } = await sb.from('order_nodes').delete().eq('id', nodeId);
+  if (error) toast('删除失败', 'error');
+  else openAdminOrderDetail(orderId);
+}
+
+async function addNode(orderId) {
+  const name = document.getElementById('newNodeName').value.trim();
+  if (!name) return toast('请输入节点名', 'error');
+
+  // 获取最大 sort_order
+  const { data: nodes } = await sb.from('order_nodes')
+    .select('sort_order')
+    .eq('order_id', orderId)
+    .order('sort_order', { ascending: false })
+    .limit(1);
+  const maxSort = nodes?.length ? nodes[0].sort_order + 1 : 1;
+
+  const { error } = await sb.from('order_nodes').insert({
+    order_id: orderId,
+    node_name: name,
+    sort_order: maxSort
+  });
+  if (error) toast('添加失败', 'error');
+  else openAdminOrderDetail(orderId);
+}
+
+async function updateMaterial(matId, field, value) {
+  const update = {};
+  update[field] = value;
+  const { error } = await sb.from('materials').update(update).eq('id', matId);
+  if (error) toast('更新失败', 'error');
+  else toast('已更新', 'success');
+}
+
+async function deleteMaterial(orderId, matId) {
+  if (!confirm('确定删除？')) return;
+  const { error } = await sb.from('materials').delete().eq('id', matId);
+  if (error) toast('删除失败', 'error');
+  else openAdminOrderDetail(orderId);
+}
+
+function openAddMaterial(orderId) {
+  const existing = document.getElementById('commonModalBody');
+  // 在当前模态中添加一个内联表单
+  const formHtml = `<div id="addMatForm" class="card" style="margin-top:12px;border:2px solid var(--c-primary);">
+    <h4 style="font-size:14px;margin-bottom:8px;">添加材料</h4>
+    <div class="form-group"><label>名称</label><input id="matName" type="text"></div>
+    <div class="form-group"><label>规格</label><input id="matSpec" type="text"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+      <div class="form-group"><label>数量</label><input id="matQty" type="number" step="0.1"></div>
+      <div class="form-group"><label>单位</label><input id="matUnit" type="text" placeholder="米/个"></div>
+      <div class="form-group"><label>单价</label><input id="matPrice" type="number" step="0.01"></div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-sm btn-primary" onclick="doAddMaterial('${orderId}')">添加</button>
+      <button class="btn btn-sm btn-ghost" onclick="document.getElementById('addMatForm').remove()">取消</button>
+    </div>
+  </div>`;
+
+  // 移除旧表单
+  const old = document.getElementById('addMatForm');
+  if (old) old.remove();
+
+  existing.insertAdjacentHTML('beforeend', formHtml);
+}
+
+async function doAddMaterial(orderId) {
+  const name = document.getElementById('matName').value.trim();
+  if (!name) return toast('材料名必填', 'error');
+
+  const { error } = await sb.from('materials').insert({
+    order_id: orderId,
+    name,
+    specification: document.getElementById('matSpec').value.trim(),
+    quantity: parseFloat(document.getElementById('matQty').value) || 0,
+    unit: document.getElementById('matUnit').value.trim(),
+    unit_price: parseFloat(document.getElementById('matPrice').value) || 0
+  });
+
+  if (error) toast('添加失败', 'error');
+  else openAdminOrderDetail(orderId);
+}
+
+async function ackRemarkLog(orderId, logId) {
+  const { error } = await sb.from('remark_logs').update({ acknowledged: true }).eq('id', logId);
+  if (error) toast('操作失败', 'error');
+  else openAdminOrderDetail(orderId);
+}
+
+async function adminSendMsg(orderId, isNotification) {
+  const content = document.getElementById('adminMsg').value.trim();
+  if (!content) return toast('请输入内容', 'error');
+  const { error } = await sb.from('messages').insert({
+    order_id: orderId,
+    user_id: currentUser.id,
+    content,
+    is_notification: isNotification
+  });
+  if (error) toast('发送失败', 'error');
+  else {
+    toast('已发送', 'success');
+    document.getElementById('adminMsg').value = '';
+  }
+}
+
+/* ── 后台：排单管理 ── */
+async function loadAdminQueue(body) {
+  body.innerHTML = '<div class="page-content"><div class="skeleton skeleton-card"></div></div>';
+
+  const [ordersRes, msRes] = await Promise.all([
+    sb.from('orders').select('*').order('schedule_month').order('sort_order'),
+    sb.from('month_settings').select('*').order('month')
+  ]);
+
+  const orders = ordersRes.data || [];
+  const settings = msRes.data || [];
+
+  let html = `<div class="page-content">
+    <h3 style="font-size:16px;margin-bottom:12px;">月份容量设置</h3>`;
+
+  // 月份容量设置
+  const months = [...new Set([...orders.map(o => o.schedule_month), ...settings.map(s => s.month)])].filter(Boolean).sort();
+  if (!months.length) months.push(getCurrentMonth());
+
+  months.forEach(m => {
+    const ms = settings.find(s => s.month === m) || { normal_limit: 8, rush_limit: 2, id: null };
+    html += `<div class="card" style="padding:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <strong>${fmtMonth(m)}</strong>
+        <div style="display:flex;gap:8px;font-size:13px;">
+          <span>普通上限: <input type="number" value="${ms.normal_limit}" style="width:50px;padding:4px;font-size:13px;" onchange="updateMonthSetting('${m}','${ms.id}','normal_limit',this.value)"></span>
+          <span>加塞上限: <input type="number" value="${ms.rush_limit}" style="width:50px;padding:4px;font-size:13px;" onchange="updateMonthSetting('${m}','${ms.id}','rush_limit',this.value)"></span>
+        </div>
+      </div>
+    </div>`;
+  });
+
+  html += `<div style="margin-bottom:16px;">
+    <button class="btn btn-sm btn-secondary" onclick="addMonthSetting()">+ 添加月份</button>
+  </div>`;
+
+  // 按月分组的排单列表
+  const groups = {};
+  orders.forEach(o => {
+    const m = o.schedule_month || '未排期';
+    if (!groups[m]) groups[m] = [];
+    groups[m].push(o);
+  });
+
+  Object.keys(groups).sort().forEach(m => {
+    html += `<h3 style="font-size:15px;margin:16px 0 8px;">${fmtMonth(m)}</h3>`;
+    groups[m].forEach((o, i) => {
+      html += `<div class="admin-card" style="display:flex;align-items:center;gap:12px;">
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          <button class="btn btn-sm btn-ghost" style="padding:2px 6px;font-size:10px;" onclick="moveQueueOrder('${o.id}',${o.sort_order - 1})">↑</button>
+          <button class="btn btn-sm btn-ghost" style="padding:2px 6px;font-size:10px;" onclick="moveQueueOrder('${o.id}',${o.sort_order + 1})">↓</button>
+        </div>
+        <div style="flex:1;">
+          <div style="font-weight:600;font-size:14px;">${o.order_no} · ${o.customer_name}</div>
+          <div style="font-size:12px;color:var(--c-text-light);">${o.project_name} ${o.is_rush ? '🔥' : ''} | ${statusText(o.status)} | 预估: ${o.estimated_time || '-'}</div>
+        </div>
+        <select style="width:auto;font-size:12px;padding:4px;" onchange="updateOrderField('${o.id}','status',this.value);loadAdminQueue(document.getElementById('adminBody'))">
+          <option value="queued" ${o.status==='queued'?'selected':''}>排队中</option>
+          <option value="in_progress" ${o.status==='in_progress'?'selected':''}>制作中</option>
+          <option value="completed" ${o.status==='completed'?'selected':''}>已完成</option>
+        </select>
+      </div>`;
+    });
+  });
+
+  html += '</div>';
+  body.innerHTML = html;
+}
+
+async function updateMonthSetting(month, existingId, field, value) {
+  if (existingId && existingId !== 'null') {
+    const update = {};
+    update[field] = parseInt(value);
+    const { error } = await sb.from('month_settings').update(update).eq('id', existingId);
+    if (error) toast('更新失败', 'error');
+    else toast('已更新', 'success');
+  } else {
+    const row = { month };
+    row[field] = parseInt(value);
+    const { error } = await sb.from('month_settings').upsert(row, { onConflict: 'month' });
+    if (error) toast('保存失败', 'error');
+    else toast('已保存', 'success');
+  }
+}
+
+function addMonthSetting() {
+  const month = prompt('输入月份（格式 YYYY-MM）：', getCurrentMonth());
+  if (!month) return;
+  sb.from('month_settings').upsert({ month, normal_limit: 8, rush_limit: 2 }, { onConflict: 'month' })
+    .then(({ error }) => {
+      if (error) toast('添加失败', 'error');
+      else loadAdminQueue(document.getElementById('adminBody'));
+    });
+}
+
+async function moveQueueOrder(orderId, newSort) {
+  const { error } = await sb.from('orders').update({ sort_order: newSort }).eq('id', orderId);
+  if (error) toast('移动失败', 'error');
+  else loadAdminQueue(document.getElementById('adminBody'));
+}
+
+/* ── 后台：作品管理 ── */
+async function loadAdminWorks(body) {
+  const { data, error } = await sb.from('works')
+    .select('*, categories(name)')
+    .order('is_pinned', { ascending: false })
+    .order('sort_order')
+    .order('created_at', { ascending: false });
+
+  if (error) return toast('加载失败', 'error');
+
+  let html = `<div style="padding:12px 16px;">
+    <button class="btn btn-sm btn-primary" onclick="openAddWork()">+ 添加作品</button>
+    <button class="btn btn-sm btn-secondary" onclick="openGenWork()">从已完成订单生成</button>
+  </div>
+  <div class="admin-list">`;
+
+  (data || []).forEach(w => {
+    html += `<div class="admin-card" style="display:flex;gap:12px;">
+      <img src="${w.cover_image}" style="width:60px;height:80px;border-radius:8px;object-fit:cover;"
+           onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 3 4%22><rect fill=%22%23ECD9ED%22 width=%223%22 height=%224%22/></svg>'">
+      <div style="flex:1;">
+        <div class="ac-title">${w.is_pinned ? '📌 ' : ''}${w.is_hidden ? '👁‍🗨 ' : ''}${w.title}</div>
+        <div class="ac-sub">${w.categories?.name || '未分类'}</div>
+        <div class="ac-actions">
+          <button class="btn btn-sm btn-ghost" onclick="toggleWorkPin('${w.id}',${!w.is_pinned})">${w.is_pinned ? '取消置顶' : '置顶'}</button>
+          <button class="btn btn-sm btn-ghost" onclick="toggleWorkHide('${w.id}',${!w.is_hidden})">${w.is_hidden ? '显示' : '隐藏'}</button>
+          <button class="btn btn-sm btn-ghost" onclick="editWork('${w.id}')">编辑</button>
+          <button class="btn btn-sm btn-ghost" style="color:var(--c-danger);" onclick="deleteWork('${w.id}')">删除</button>
+        </div>
+      </div>
+    </div>`;
+  });
+
+  html += '</div>';
+  body.innerHTML = html;
+}
+
+function openAddWork() {
+  const body = document.getElementById('commonModalBody');
+  body.innerHTML = `<h3>添加作品</h3>
+    <div class="form-group"><label>标题 <span class="required">*</span></label><input id="wkTitle" type="text"></div>
+    <div class="form-group"><label>分类</label>
+      <select id="wkCat">
+        <option value="">未分类</option>
+        ${categoriesData.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group"><label>描述</label><textarea id="wkDesc"></textarea></div>
+    <div class="form-group"><label>封面图</label>
+      <div id="wkCoverPreview" style="margin-bottom:8px;"></div>
+      <button class="btn btn-sm btn-secondary" onclick="pickWorkCover()">选择封面</button>
+    </div>
+    <button class="btn btn-primary btn-block" style="margin-top:16px;" onclick="doAddWork()">保存</button>`;
+  document.getElementById('commonModal').classList.add('active');
+}
+
+let workCoverUrl = '';
+
+function pickWorkCover() {
+  const input = document.getElementById('fileInput');
+  input.value = '';
+  input.multiple = false;
+  fileInputCallback = async (files) => {
+    const url = await uploadImage('work-images', files[0]);
+    if (url) {
+      workCoverUrl = url;
+      document.getElementById('wkCoverPreview').innerHTML =
+        `<img src="${url}" style="width:100px;height:133px;border-radius:8px;object-fit:cover;">`;
+    }
+  };
+  input.click();
+}
+
+async function doAddWork() {
+  const title = document.getElementById('wkTitle').value.trim();
+  if (!title) return toast('标题必填', 'error');
+
+  const { error } = await sb.from('works').insert({
+    title,
+    category_id: document.getElementById('wkCat').value || null,
+    description: document.getElementById('wkDesc').value,
+    cover_image: workCoverUrl
+  });
+
+  if (error) return toast('添加失败: ' + error.message, 'error');
+  toast('作品已添加', 'success');
+  workCoverUrl = '';
+  closeCommonModal();
+  loadAdminWorks(document.getElementById('adminBody'));
+}
+
+function openGenWork() {
+  const body = document.getElementById('commonModalBody');
+  body.innerHTML = `<h3>从已完成订单生成作品</h3><div id="genWorkList">加载中…</div>`;
+  document.getElementById('commonModal').classList.add('active');
+
+  sb.from('orders').select('*').eq('status', 'completed').order('updated_at', { ascending: false })
+    .then(({ data }) => {
+      const list = document.getElementById('genWorkList');
+      if (!data?.length) {
+        list.innerHTML = '<p style="color:var(--c-text-light);">暂无已完成订单</p>';
+        return;
+      }
+      list.innerHTML = data.map(o => `
+        <div class="admin-card">
+          <div class="ac-title">${o.order_no} · ${o.project_name}</div>
+          <button class="btn btn-sm btn-secondary" onclick="genWorkFromOrder('${o.id}','${o.project_name.replace(/'/g, "\\'")}')">生成作品</button>
+        </div>
+      `).join('');
+    });
+}
+
+async function genWorkFromOrder(orderId, projectName) {
+  const { error } = await sb.from('works').insert({
+    title: projectName,
+    order_id: orderId,
+    cover_image: ''
+  });
+  if (error) return toast('生成失败', 'error');
+  toast('作品已生成，请编辑完善', 'success');
+  closeCommonModal();
+  loadAdminWorks(document.getElementById('adminBody'));
+}
+
+async function toggleWorkPin(id, pinned) {
+  const { error } = await sb.from('works').update({ is_pinned: pinned }).eq('id', id);
+  if (error) toast('操作失败', 'error');
+  else loadAdminWorks(document.getElementById('adminBody'));
+}
+
+async function toggleWorkHide(id, hidden) {
+  const { error } = await sb.from('works').update({ is_hidden: hidden }).eq('id', id);
+  if (error) toast('操作失败', 'error');
+  else loadAdminWorks(document.getElementById('adminBody'));
+}
+
+async function editWork(id) {
+  const { data: work } = await sb.from('works').select('*').eq('id', id).single();
+  if (!work) return;
+
+  const body = document.getElementById('commonModalBody');
+  workCoverUrl = work.cover_image;
+  body.innerHTML = `<h3>编辑作品</h3>
+    <div class="form-group"><label>标题</label><input id="wkTitle" type="text" value="${work.title}"></div>
+    <div class="form-group"><label>分类</label>
+      <select id="wkCat">
+        <option value="">未分类</option>
+        ${categoriesData.map(c => `<option value="${c.id}" ${c.id===work.category_id?'selected':''}>${c.name}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group"><label>描述</label><textarea id="wkDesc">${work.description || ''}</textarea></div>
+    <div class="form-group"><label>封面图</label>
+      <div id="wkCoverPreview">${work.cover_image ? `<img src="${work.cover_image}" style="width:100px;height:133px;border-radius:8px;object-fit:cover;">` : ''}</div>
+      <button class="btn btn-sm btn-secondary" style="margin-top:8px;" onclick="pickWorkCover()">更换封面</button>
+    </div>
+    <div class="form-group"><label>排序值</label><input id="wkSort" type="number" value="${work.sort_order}"></div>
+    <button class="btn btn-primary btn-block" style="margin-top:16px;" onclick="doEditWork('${id}')">保存</button>`;
+  document.getElementById('commonModal').classList.add('active');
+}
+
+async function doEditWork(id) {
+  const { error } = await sb.from('works').update({
+    title: document.getElementById('wkTitle').value.trim(),
+    category_id: document.getElementById('wkCat').value || null,
+    description: document.getElementById('wkDesc').value,
+    cover_image: workCoverUrl,
+    sort_order: parseInt(document.getElementById('wkSort').value) || 0
+  }).eq('id', id);
+
+  if (error) return toast('保存失败', 'error');
+  toast('已保存', 'success');
+  workCoverUrl = '';
+  closeCommonModal();
+  loadAdminWorks(document.getElementById('adminBody'));
+}
+
+async function deleteWork(id) {
+  if (!confirm('确定删除此作品？')) return;
+  const { error } = await sb.from('works').delete().eq('id', id);
+  if (error) toast('删除失败', 'error');
+  else loadAdminWorks(document.getElementById('adminBody'));
+}
+
+/* ═══════════════════════════════════════════
+   11. 分享令牌访问
+   ═══════════════════════════════════════════ */
+async function handleShareToken() {
+  const params = new URLSearchParams(location.search);
+  const token = params.get('token');
+  if (!token) return false;
+
+  const { data, error } = await sb.rpc('get_order_by_token', { p_token: token });
+  if (error || !data || !data.order) {
+    toast('分享链接无效或已过期', 'error');
+    return false;
+  }
+
+  // 直接显示订单详情
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-orderDetail').classList.add('active');
+  hide('tabBar');
+
+  const order = data.order;
+  const nodes = data.nodes || [];
+  const mats = data.materials || [];
+
+  document.getElementById('odTitle').textContent = order.project_name;
+
+  let html = `<div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <span class="oc-status ${order.status}">${statusText(order.status)}</span>
+      <span style="font-size:13px;color:var(--c-text-light);">${order.order_no}</span>
+    </div>
+    <div style="margin-top:8px;font-size:14px;">
+      <div>客户：${maskName(order.customer_name)}</div>
+      <div>排单月份：${fmtMonth(order.schedule_month)}</div>
+      <div>预估完成：${order.estimated_time || '待定'}</div>
+    </div>
+  </div>`;
+
+  // 时间线
+  html += `<div class="card" style="padding-bottom:0;">
+    <h3 style="font-size:15px;margin-bottom:16px;">📋 制作进度</h3>
+    <div class="timeline">`;
+
+  let currentFound = false;
+  nodes.forEach((n, i) => {
+    const isDone = n.status === 'completed';
+    const isSkip = n.status === 'skipped';
+    let cls = '';
+    if (isDone) cls = 'done';
+    else if (isSkip) cls = 'skipped';
+    else if (!currentFound) { cls = 'current'; currentFound = true; }
+    const isLast = i === nodes.length - 1;
+
+    html += `<div class="timeline-node ${cls}">
+      <div class="timeline-line">
+        <div class="timeline-dot">${isDone ? '✓' : isSkip ? '—' : ''}</div>
+        ${!isLast ? '<div class="timeline-connector"></div>' : ''}
+      </div>
+      <div class="tl-content">
+        <div class="tl-name">${n.node_name}</div>
+        ${isDone ? `<div class="tl-time">${fmtDate(n.completed_at)}</div>` : ''}
+      </div>
+    </div>`;
+  });
+  html += '</div></div>';
+
+  // 材料清单
+  if (mats.length) {
+    let total = 0;
+    html += `<div class="card"><h3 style="font-size:15px;margin-bottom:12px;">🧵 材料清单</h3>`;
+    mats.forEach(m => {
+      const sub = (m.quantity || 0) * (m.unit_price || 0);
+      total += sub;
+      html += `<div class="material-card">
+        <div class="mc-name">${m.name}</div>
+        <div class="mc-row"><span>${m.quantity}${m.unit} × ¥${m.unit_price}</span><span>${matStatusText(m.status)}</span></div>
+      </div>`;
+    });
+    html += `<div class="material-total">合计：¥${total.toFixed(2)}</div></div>`;
+  }
+
+  document.getElementById('orderDetailContent').innerHTML = html;
+  return true;
+}
+
+/* ═══════════════════════════════════════════
+   12. 应用初始化
+   ═══════════════════════════════════════════ */
+async function initApp() {
+  // 监听认证状态
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if (session?.user) {
+      currentUser = session.user;
+      await loadUserProfile();
+    } else {
+      currentUser = null;
+      currentProfile = null;
+    }
+  });
+
+  // 初始加载用户
+  await loadUserProfile();
+
+  // 处理分享令牌
+  const hasToken = await handleShareToken();
+  if (!hasToken) {
+    // 正常路由
+    handleRoute();
+  }
+}
+
+// 启动
+initApp();
+</script>
+</body>
+</html>
