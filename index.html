@@ -772,6 +772,167 @@ img { display: block; max-width: 100%; }
 }
 
 /* ═══════════════════════════════════════════
+   年月滚轮选择器
+   ═══════════════════════════════════════════ */
+.picker-overlay {
+  position: fixed; inset: 0; background: rgba(58,48,64,0.5);
+  z-index: 550; display: none; align-items: flex-end; justify-content: center;
+}
+.picker-overlay.active { display: flex; }
+.picker-sheet {
+  background: var(--c-white);
+  border-radius: 20px 20px 0 0;
+  width: 100%; max-width: 500px;
+  padding: 0 0 calc(16px + var(--safe-bottom));
+  animation: slideUp .3s ease;
+}
+.picker-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--c-light-purple);
+}
+.picker-header button {
+  background: none; font-size: 15px; font-weight: 600;
+  color: var(--c-primary); padding: 4px 8px;
+}
+.picker-header .picker-cancel { color: var(--c-gray-purple); }
+.picker-header .picker-title {
+  font-size: 16px; font-weight: 600; color: var(--c-text);
+}
+.picker-body {
+  display: flex; height: 220px; overflow: hidden;
+  position: relative;
+}
+.picker-body::before, .picker-body::after {
+  content: ''; position: absolute; left: 0; right: 0;
+  height: 80px; z-index: 2; pointer-events: none;
+}
+.picker-body::before {
+  top: 0;
+  background: linear-gradient(to bottom, var(--c-white), transparent);
+}
+.picker-body::after {
+  bottom: 0;
+  background: linear-gradient(to top, var(--c-white), transparent);
+}
+.picker-highlight {
+  position: absolute; top: 50%; left: 16px; right: 16px;
+  height: 40px; transform: translateY(-50%);
+  background: var(--c-light-purple);
+  border-radius: 10px; z-index: 1; pointer-events: none;
+}
+.picker-column {
+  flex: 1; overflow-y: scroll; scroll-snap-type: y mandatory;
+  -webkit-overflow-scrolling: touch;
+  position: relative; z-index: 3;
+  scrollbar-width: none;
+}
+.picker-column::-webkit-scrollbar { display: none; }
+.picker-column .picker-spacer {
+  height: 90px;
+}
+.picker-column .picker-item {
+  height: 40px; display: flex; align-items: center; justify-content: center;
+  font-size: 18px; color: var(--c-gray-purple);
+  scroll-snap-align: center;
+  transition: color .15s, font-weight .15s;
+}
+.picker-column .picker-item.selected {
+  color: var(--c-text); font-weight: 600;
+}
+
+/* ═══════════════════════════════════════════
+   拖拽排序
+   ═══════════════════════════════════════════ */
+.drag-item {
+  transition: transform .15s, box-shadow .15s;
+  touch-action: pan-x;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.drag-item.dragging {
+  opacity: 0.7;
+  box-shadow: 0 8px 32px rgba(116,96,151,0.25);
+  z-index: 100;
+  position: relative;
+}
+.drag-item.drag-over-above {
+  transform: translateY(8px);
+}
+.drag-item.drag-over-below {
+  transform: translateY(-8px);
+}
+.drag-placeholder {
+  background: var(--c-light-purple);
+  border: 2px dashed var(--c-primary);
+  border-radius: var(--radius);
+  height: 60px;
+  margin-bottom: 10px;
+  opacity: 0.5;
+}
+
+/* 聊天节点胶囊 */
+.chat-node-tabs {
+  display: flex; gap: 6px; padding: 10px 16px;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  border-bottom: 1px solid var(--c-light-purple);
+}
+.chat-node-tabs::-webkit-scrollbar { display: none; }
+.chat-node-tab {
+  flex-shrink: 0; padding: 5px 14px;
+  border-radius: 16px; font-size: 12px; font-weight: 500;
+  background: var(--c-bg); color: var(--c-text-light);
+  border: 1.5px solid var(--c-light-purple);
+  transition: all .2s;
+}
+.chat-node-tab.active {
+  background: var(--c-primary); color: #fff;
+  border-color: var(--c-primary);
+}
+
+/* 高亮消息 */
+.chat-bubble .cb-body.highlighted {
+  background: #FFF9E6 !important;
+  color: var(--c-text) !important;
+  border: 1.5px solid #F0D860;
+}
+.chat-bubble .cb-actions {
+  display: flex; gap: 12px; margin-top: 4px;
+  font-size: 12px;
+}
+.chat-bubble .cb-actions button {
+  background: none; color: var(--c-gray-purple);
+  font-size: 12px; padding: 2px 4px;
+  transition: color .2s;
+}
+.chat-bubble .cb-actions button.active {
+  color: var(--c-primary);
+}
+
+/* 交流重点归纳框 */
+.summary-box {
+  background: #FFFDF0;
+  border: 1.5px solid #F0D860;
+  border-radius: var(--radius);
+  padding: 14px;
+  margin: 12px 16px;
+}
+.summary-box h4 {
+  font-size: 14px; font-weight: 600;
+  margin-bottom: 8px; color: var(--c-text);
+  display: flex; align-items: center; gap: 6px;
+}
+.summary-box .summary-content {
+  font-size: 13px; color: var(--c-text);
+  line-height: 1.6; white-space: pre-wrap;
+}
+.summary-box .summary-edit-btn {
+  margin-top: 8px; font-size: 12px;
+  color: var(--c-primary); background: none;
+  padding: 4px 8px;
+}
+
+/* ═══════════════════════════════════════════
    响应式：平板
    ═══════════════════════════════════════════ */
 @media (min-width: 768px) {
@@ -853,6 +1014,7 @@ img { display: block; max-width: 100%; }
 <div id="page-queue" class="page">
   <div class="page-header" style="border-bottom:none;">
     <h2>📋 排单看板</h2>
+    <button class="btn btn-sm btn-secondary" onclick="openMonthPicker('queue')">📅 选年月</button>
   </div>
   <div id="queueTip" class="queue-tip" style="display:none;"></div>
   <div id="queueList" class="queue-section"></div>
@@ -1077,6 +1239,22 @@ img { display: block; max-width: 100%; }
 
 <!-- 隐藏 file input -->
 <input type="file" id="fileInput" accept="image/*" style="display:none;" multiple>
+
+<!-- 年月滚轮选择器 -->
+<div id="monthPicker" class="picker-overlay" onclick="if(event.target===this)closeMonthPicker()">
+  <div class="picker-sheet">
+    <div class="picker-header">
+      <button class="picker-cancel" onclick="closeMonthPicker()">取消</button>
+      <span class="picker-title">📅 选择年月</span>
+      <button class="picker-confirm" onclick="confirmMonthPicker()">确定</button>
+    </div>
+    <div class="picker-body">
+      <div class="picker-highlight"></div>
+      <div id="pickerYear" class="picker-column"></div>
+      <div id="pickerMonth" class="picker-column"></div>
+    </div>
+  </div>
+</div>
 
 <script>
 /* ═══════════════════════════════════════════════════════════════
@@ -2173,31 +2351,67 @@ async function loadOrderDetail(id) {
     html += `<div class="material-total">合计：¥${total.toFixed(2)}</div></div>`;
   }
 
-  // 留言区
+  // 留言区（按节点分开）
   html += `<div class="card" style="padding-bottom:0;">
-    <h3 style="font-size:15px;margin-bottom:12px;">💬 留言</h3>
-    <div class="chat-area" id="chatArea">`;
+    <h3 style="font-size:15px;margin-bottom:0;">💬 留言</h3>`;
+
+  // 节点胶囊导航
+  if (nodes.length) {
+    html += `<div class="chat-node-tabs" id="chatNodeTabs">
+      <button class="chat-node-tab active" data-node-id="" onclick="filterChatByNode(this,'${order.id}')">全部</button>`;
+    nodes.forEach(n => {
+      html += `<button class="chat-node-tab" data-node-id="${n.id}" onclick="filterChatByNode(this,'${order.id}')">${n.node_name}</button>`;
+    });
+    html += `</div>`;
+  }
+
+  html += `<div class="chat-area" id="chatArea">`;
+
+  const isAdmin = currentProfile?.is_admin;
 
   msgs.forEach(m => {
     const isMine = currentUser && m.user_id === currentUser.id;
     const senderName = m.profiles?.is_admin ? '🏠 店长' : (m.profiles?.nickname || '用户');
+    const nodeAttr = m.node_id ? `data-msg-node="${m.node_id}"` : 'data-msg-node=""';
+
     if (m.is_notification) {
-      html += `<div class="chat-bubble notification"><div class="cb-body">📢 ${m.content}</div>
+      html += `<div class="chat-bubble notification" ${nodeAttr}><div class="cb-body">📢 ${m.content}</div>
         <div class="cb-time">${fmtDate(m.created_at)}</div></div>`;
     } else {
-      html += `<div class="chat-bubble ${isMine ? 'mine' : 'other'}">
+      const highlightClass = m.is_highlighted ? ' highlighted' : '';
+      html += `<div class="chat-bubble ${isMine ? 'mine' : 'other'}" ${nodeAttr}>
         ${!isMine ? `<div class="cb-name">${senderName}</div>` : ''}
-        <div class="cb-body">${m.content}${m.image_url ? `<br><img src="${m.image_url}" onclick="previewImg('${m.image_url}')">` : ''}</div>
+        <div class="cb-body${highlightClass}">${m.content}${m.image_url ? `<br><img src="${m.image_url}" onclick="previewImg('${m.image_url}')">` : ''}</div>
         <div class="cb-time" style="${isMine ? 'text-align:right;' : ''}">${fmtDate(m.created_at)}</div>
+        ${isAdmin ? `<div class="cb-actions">
+          <button class="${m.is_highlighted ? 'active' : ''}" onclick="toggleMsgHighlight('${m.id}','${order.id}',${!m.is_highlighted})">☆ 高亮</button>
+          <button class="${m.is_private ? 'active' : ''}" onclick="toggleMsgPrivate('${m.id}','${order.id}',${!m.is_private})">🔒 私密</button>
+        </div>` : ''}
       </div>`;
     }
   });
 
-  html += `</div></div>`;
+  html += `</div>`;
 
-  // 留言输入
+  // 交流重点归纳框（仅管理员可见）
+  if (isAdmin) {
+    const highlighted = msgs.filter(m => m.is_highlighted && !m.is_notification);
+    html += `<div class="summary-box" id="summaryBox">
+      <h4>⭐ 交流重点归纳</h4>
+      <div class="summary-content" id="summaryContent">${order.chat_summary || (highlighted.length ? highlighted.map(h => h.content).join('\n') : '暂无高亮内容')}</div>
+      <button class="summary-edit-btn" onclick="editSummary('${order.id}')">✏️ 编辑</button>
+    </div>`;
+  }
+
+  html += `</div>`;
+
+  // 留言输入（带节点选择）
   if (currentUser) {
     html += `<div class="chat-input-bar" style="position:sticky;bottom:calc(var(--tab-height) + var(--safe-bottom));">
+      ${nodes.length ? `<select id="msgNodeSelect" style="width:auto;font-size:12px;padding:6px 8px;border-radius:12px;flex-shrink:0;">
+        <option value="">全局</option>
+        ${nodes.map(n => `<option value="${n.id}">${n.node_name}</option>`).join('')}
+      </select>` : ''}
       <textarea id="msgInput" rows="1" placeholder="输入留言…"></textarea>
       <button class="chat-img-btn" onclick="sendMsgImage('${order.id}')">📷</button>
       <button class="btn btn-primary btn-sm" onclick="sendMessage('${order.id}')">发送</button>
@@ -2246,16 +2460,20 @@ async function saveRemark(orderId) {
   toast('备注已更新', 'success');
 }
 
-/** 发送留言 */
+/** 发送留言（带节点） */
 async function sendMessage(orderId) {
   const input = document.getElementById('msgInput');
   const content = input.value.trim();
   if (!content) return;
 
+  const nodeSelect = document.getElementById('msgNodeSelect');
+  const nodeId = nodeSelect ? nodeSelect.value || null : null;
+
   const { error } = await sb.from('messages').insert({
     order_id: orderId,
     user_id: currentUser.id,
-    content
+    content,
+    node_id: nodeId
   });
 
   if (error) {
@@ -3317,6 +3535,686 @@ async function initApp() {
     // 正常路由
     handleRoute();
   }
+}
+
+/* ═══════════════════════════════════════════
+   12.5 聊天节点过滤 + 高亮 + 归纳 + 作品回顾
+   ═══════════════════════════════════════════ */
+
+/** 按节点过滤聊天 */
+function filterChatByNode(btn, orderId) {
+  const tabs = document.querySelectorAll('#chatNodeTabs .chat-node-tab');
+  tabs.forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+
+  const nodeId = btn.dataset.nodeId;
+  const bubbles = document.querySelectorAll('#chatArea .chat-bubble');
+
+  bubbles.forEach(b => {
+    const msgNode = b.getAttribute('data-msg-node');
+    if (!nodeId) {
+      // "全部" 选项 → 显示所有
+      b.style.display = '';
+    } else {
+      b.style.display = (msgNode === nodeId || msgNode === '') ? '' : 'none';
+    }
+  });
+}
+
+/** 切换消息高亮 */
+async function toggleMsgHighlight(msgId, orderId, newState) {
+  const { error } = await sb.from('messages')
+    .update({ is_highlighted: newState })
+    .eq('id', msgId);
+  if (error) return toast('操作失败', 'error');
+  loadOrderDetail(orderId);
+}
+
+/** 切换消息私密 */
+async function toggleMsgPrivate(msgId, orderId, newState) {
+  const { error } = await sb.from('messages')
+    .update({ is_private: newState })
+    .eq('id', msgId);
+  if (error) return toast('操作失败', 'error');
+  loadOrderDetail(orderId);
+}
+
+/** 编辑交流重点归纳 */
+function editSummary(orderId) {
+  const content = document.getElementById('summaryContent');
+  const current = content.textContent;
+  const body = document.getElementById('commonModalBody');
+  body.innerHTML = `<h3>编辑交流重点归纳</h3>
+    <div class="form-group">
+      <textarea id="summaryInput" style="min-height:150px;">${current}</textarea>
+    </div>
+    <button class="btn btn-primary btn-block" onclick="saveSummary('${orderId}')">保存</button>`;
+  document.getElementById('commonModal').classList.add('active');
+}
+
+async function saveSummary(orderId) {
+  const text = document.getElementById('summaryInput').value;
+  const { error } = await sb.from('orders')
+    .update({ chat_summary: text })
+    .eq('id', orderId);
+  if (error) return toast('保存失败', 'error');
+  toast('归纳已保存', 'success');
+  closeCommonModal();
+  loadOrderDetail(orderId);
+}
+
+/* ═══════════════════════════════════════════
+   12.6 作品：一键上传 + 制作过程回顾
+   ═══════════════════════════════════════════ */
+
+/** 从已完成订单生成作品（增强版，加流程回顾选项） */
+const _origGenWorkFromOrder = typeof genWorkFromOrder === 'function' ? genWorkFromOrder : null;
+genWorkFromOrder = async function(orderId, projectName) {
+  const body = document.getElementById('commonModalBody');
+  body.innerHTML = `<h3>一键上传作品</h3>
+    <div class="card" style="background:var(--c-bg);padding:12px;">
+      <div style="font-weight:600;margin-bottom:8px;">📦 ${projectName}</div>
+      <div style="font-size:13px;color:var(--c-text-light);">此订单已完成，可生成作品</div>
+    </div>
+    <div class="switch-row" style="margin-top:16px;">
+      <label>📖 公开流程回顾与精选对话</label>
+      <div id="showReviewToggle" class="toggle on" onclick="this.classList.toggle('on')"></div>
+    </div>
+    <p style="font-size:12px;color:var(--c-text-light);margin-top:8px;">
+      开启后，顾客在成品页可查看制作过程、节点照片及高亮聊天记录
+    </p>
+    <button class="btn btn-primary btn-block" style="margin-top:16px;" onclick="doGenWorkWithReview('${orderId}','${projectName.replace(/'/g, "\\'")}')">确认生成作品</button>`;
+};
+
+async function doGenWorkWithReview(orderId, projectName) {
+  const showReview = document.getElementById('showReviewToggle').classList.contains('on');
+
+  const { error } = await sb.from('works').insert({
+    title: projectName,
+    order_id: orderId,
+    cover_image: '',
+    show_process_review: showReview
+  });
+
+  if (error) return toast('生成失败: ' + error.message, 'error');
+  toast('作品已生成，请编辑完善', 'success');
+  closeCommonModal();
+  loadAdminWorks(document.getElementById('adminBody'));
+}
+
+/** 作品详情：制作过程回顾入口（增强 openWorkDetail） */
+const _origOpenWorkDetail = openWorkDetail;
+openWorkDetail = async function(id) {
+  const work = worksData.find(w => w.id === id);
+  if (!work) return;
+
+  // 加载详情图
+  const { data: imgs } = await sb.from('work_images')
+    .select('*')
+    .eq('work_id', id)
+    .order('sort_order');
+
+  const allImgs = [work.cover_image, ...(imgs || []).map(i => i.image_url)].filter(Boolean);
+
+  // 渲染轮播
+  const track = document.querySelector('#workCarousel .carousel-track');
+  const dots = document.querySelector('#workCarousel .carousel-dots');
+  track.innerHTML = allImgs.map(src => `<img src="${src}" alt="">`).join('');
+  dots.innerHTML = allImgs.map((_, i) => `<div class="dot ${i === 0 ? 'active' : ''}"></div>`).join('');
+  initCarousel('workCarousel', allImgs.length);
+
+  let bodyHtml = `<h2>${work.title}</h2>
+    <div class="desc">${work.description || '暂无描述'}</div>`;
+
+  // 制作过程回顾（如果开启了）
+  if (work.order_id && work.show_process_review) {
+    bodyHtml += `<div class="card" style="cursor:pointer;margin-top:12px;" onclick="openProcessReview('${work.order_id}')">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:24px;">📖</span>
+        <div>
+          <div style="font-weight:600;font-size:15px;">制作过程回顾</div>
+          <div style="font-size:12px;color:var(--c-text-light);">查看每个节点的照片、配文与精选对话</div>
+        </div>
+        <span style="margin-left:auto;color:var(--c-gray-purple);">›</span>
+      </div>
+    </div>`;
+  } else if (work.order_id) {
+    // 有关联订单但未开启回顾
+    const { data: nodes } = await sb.from('order_nodes')
+      .select('*')
+      .eq('order_id', work.order_id)
+      .order('sort_order');
+    if (nodes && nodes.length) {
+      bodyHtml += `<h3 style="font-size:16px;margin:16px 0 12px;">🕐 制作回顾</h3>`;
+      bodyHtml += renderMiniTimeline(nodes);
+    }
+  }
+
+  bodyHtml += `<div style="margin-top:24px;">
+    <button class="btn btn-primary btn-block" onclick="sameStyleApply('${work.title}')">
+      ✨ 同款定制
+    </button>
+  </div>`;
+
+  document.getElementById('workDetailBody').innerHTML = bodyHtml;
+  document.getElementById('workDetail').classList.add('open');
+};
+
+/** 制作过程回顾详情页 */
+async function openProcessReview(orderId) {
+  const body = document.getElementById('commonModalBody');
+  body.innerHTML = '<div class="skeleton skeleton-card"></div>';
+  document.getElementById('commonModal').classList.add('active');
+
+  const [nodesRes, photosRes, msgsRes, orderRes] = await Promise.all([
+    sb.from('order_nodes').select('*').eq('order_id', orderId).order('sort_order'),
+    sb.from('node_photos').select('*,order_nodes!inner(order_id)').eq('order_nodes.order_id', orderId),
+    sb.from('messages').select('*, profiles:user_id(nickname, is_admin)')
+      .eq('order_id', orderId)
+      .eq('is_highlighted', true)
+      .eq('is_private', false)
+      .order('created_at'),
+    sb.from('orders').select('chat_summary').eq('id', orderId).single()
+  ]);
+
+  const nodes = nodesRes.data || [];
+  const photos = photosRes.data || [];
+  const msgs = msgsRes.data || [];
+  const summary = orderRes.data?.chat_summary || '';
+
+  const photoMap = {};
+  photos.forEach(p => {
+    if (!photoMap[p.node_id]) photoMap[p.node_id] = [];
+    photoMap[p.node_id].push(p);
+  });
+
+  const msgMap = {};
+  msgs.forEach(m => {
+    const nid = m.node_id || '_global';
+    if (!msgMap[nid]) msgMap[nid] = [];
+    msgMap[nid].push(m);
+  });
+
+  let html = '<h3>📖 制作过程回顾</h3>';
+
+  nodes.forEach(n => {
+    if (n.status === 'skipped') return;
+    const isDone = n.status === 'completed';
+    const nodePhotos = photoMap[n.id] || [];
+    const nodeMsgs = msgMap[n.id] || [];
+
+    html += `<div class="card" style="margin-bottom:12px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <div style="width:10px;height:10px;border-radius:50%;background:${isDone ? 'var(--c-primary)' : 'var(--c-gray-purple)'};flex-shrink:0;"></div>
+        <span style="font-weight:600;font-size:15px;">${n.node_name}</span>
+        ${isDone && n.completed_at ? `<span style="font-size:12px;color:var(--c-text-light);margin-left:auto;">${fmtDate(n.completed_at)}</span>` : ''}
+      </div>`;
+
+    // 节点照片 + 配文
+    if (nodePhotos.length) {
+      html += `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">`;
+      nodePhotos.forEach(p => {
+        html += `<div style="text-align:center;">
+          <img src="${p.image_url}" style="width:80px;height:80px;border-radius:8px;object-fit:cover;cursor:pointer;" onclick="previewImg('${p.image_url}')">
+          ${p.caption ? `<div style="font-size:11px;color:var(--c-text-light);margin-top:2px;max-width:80px;">${p.caption}</div>` : ''}
+        </div>`;
+      });
+      html += `</div>`;
+    }
+
+    // 该节点精选对话
+    if (nodeMsgs.length) {
+      html += `<div style="border-top:1px solid var(--c-light-purple);padding-top:8px;">
+        <div style="font-size:12px;color:var(--c-primary);font-weight:500;margin-bottom:6px;">💬 精选对话</div>`;
+      nodeMsgs.forEach(m => {
+        const name = m.profiles?.is_admin ? '🏠 店长' : (m.profiles?.nickname || '顾客');
+        html += `<div style="font-size:13px;margin-bottom:4px;">
+          <span style="font-weight:500;">${name}：</span>${m.content}
+        </div>`;
+      });
+      html += `</div>`;
+    }
+
+    html += `</div>`;
+  });
+
+  // 全局精选对话
+  if (msgMap._global && msgMap._global.length) {
+    html += `<div class="card"><div style="font-size:12px;color:var(--c-primary);font-weight:500;margin-bottom:6px;">💬 其他精选对话</div>`;
+    msgMap._global.forEach(m => {
+      const name = m.profiles?.is_admin ? '🏠 店长' : (m.profiles?.nickname || '顾客');
+      html += `<div style="font-size:13px;margin-bottom:4px;"><span style="font-weight:500;">${name}：</span>${m.content}</div>`;
+    });
+    html += `</div>`;
+  }
+
+  // 交流重点归纳
+  if (summary) {
+    html += `<div class="summary-box">
+      <h4>⭐ 交流重点归纳</h4>
+      <div class="summary-content">${summary}</div>
+    </div>`;
+  }
+
+  body.innerHTML = html;
+}
+
+/* ═══════════════════════════════════════════
+   13. 年月滚轮选择器
+   ═══════════════════════════════════════════ */
+let pickerCallback = null;
+let pickerSelectedYear = null;
+let pickerSelectedMonth = null;
+
+function openMonthPicker(mode) {
+  const now = new Date();
+  const curYear = now.getFullYear();
+  const curMonth = now.getMonth() + 1;
+
+  const yearCol = document.getElementById('pickerYear');
+  const monthCol = document.getElementById('pickerMonth');
+
+  // 生成年份列表 (当前年-1 到 当前年+3)
+  const years = [];
+  for (let y = curYear - 1; y <= curYear + 3; y++) years.push(y);
+
+  // 生成月份 1-12
+  const months = [];
+  for (let m = 1; m <= 12; m++) months.push(m);
+
+  yearCol.innerHTML = '<div class="picker-spacer"></div>' +
+    years.map(y => `<div class="picker-item" data-value="${y}">${y}年</div>`).join('') +
+    '<div class="picker-spacer"></div>';
+
+  monthCol.innerHTML = '<div class="picker-spacer"></div>' +
+    months.map(m => `<div class="picker-item" data-value="${m}">${m}月</div>`).join('') +
+    '<div class="picker-spacer"></div>';
+
+  pickerSelectedYear = curYear;
+  pickerSelectedMonth = curMonth;
+
+  // 设置回调
+  if (mode === 'queue') {
+    pickerCallback = (year, month) => {
+      const m = `${year}-${String(month).padStart(2, '0')}`;
+      queueFilterMonth = m;
+      loadQueue();
+    };
+  } else if (mode === 'adminQueue') {
+    pickerCallback = (year, month) => {
+      const m = `${year}-${String(month).padStart(2, '0')}`;
+      adminQueueFilterMonth = m;
+      loadAdminQueue(document.getElementById('adminBody'));
+    };
+  }
+
+  document.getElementById('monthPicker').classList.add('active');
+
+  // 滚动到当前年月
+  setTimeout(() => {
+    scrollPickerTo(yearCol, years.indexOf(curYear));
+    scrollPickerTo(monthCol, curMonth - 1);
+    setupPickerScroll(yearCol);
+    setupPickerScroll(monthCol);
+  }, 50);
+}
+
+function scrollPickerTo(col, index) {
+  const itemH = 40;
+  col.scrollTop = index * itemH;
+  updatePickerSelection(col);
+}
+
+function setupPickerScroll(col) {
+  let scrollTimer = null;
+  col.addEventListener('scroll', () => {
+    clearTimeout(scrollTimer);
+    scrollTimer = setTimeout(() => {
+      const itemH = 40;
+      const idx = Math.round(col.scrollTop / itemH);
+      col.scrollTo({ top: idx * itemH, behavior: 'smooth' });
+      updatePickerSelection(col);
+    }, 80);
+  });
+}
+
+function updatePickerSelection(col) {
+  const itemH = 40;
+  const idx = Math.round(col.scrollTop / itemH);
+  const items = col.querySelectorAll('.picker-item');
+  items.forEach((item, i) => {
+    item.classList.toggle('selected', i === idx);
+    if (i === idx) {
+      const val = parseInt(item.dataset.value);
+      if (col.id === 'pickerYear') pickerSelectedYear = val;
+      else pickerSelectedMonth = val;
+    }
+  });
+}
+
+function closeMonthPicker() {
+  document.getElementById('monthPicker').classList.remove('active');
+  pickerCallback = null;
+}
+
+function confirmMonthPicker() {
+  if (pickerCallback && pickerSelectedYear && pickerSelectedMonth) {
+    pickerCallback(pickerSelectedYear, pickerSelectedMonth);
+  }
+  closeMonthPicker();
+}
+
+/* ═══════════════════════════════════════════
+   14. 排单过滤（按选中月份过滤显示）
+   ═══════════════════════════════════════════ */
+let queueFilterMonth = null;
+let adminQueueFilterMonth = null;
+
+// 改写 loadQueue，支持过滤月份
+const _origLoadQueue = loadQueue;
+loadQueue = async function() {
+  show('queueLoading');
+  hide('queueList');
+  hide('queueTip');
+
+  const [queueRes, msRes] = await Promise.all([
+    sb.from('public_queue').select('*'),
+    sb.from('month_settings').select('*')
+  ]);
+
+  hide('queueLoading');
+
+  if (queueRes.error) {
+    toast('排单加载失败: ' + queueRes.error.message, 'error');
+    return;
+  }
+
+  let items = queueRes.data || [];
+  const monthSettings = {};
+  (msRes.data || []).forEach(ms => { monthSettings[ms.month] = ms; });
+
+  // 如果有选中月份，只显示该月
+  if (queueFilterMonth) {
+    items = items.filter(i => i.schedule_month === queueFilterMonth);
+  }
+
+  const curMonth = getCurrentMonth();
+
+  // 前面有多少单
+  if (currentUser) {
+    const allItems = queueRes.data || [];
+    const myItems = allItems.filter(i => i.user_id === currentUser.id && i.status !== 'completed');
+    if (myItems.length) {
+      const firstMine = myItems[0];
+      const ahead = allItems.filter(i =>
+        i.status !== 'completed' &&
+        i.user_id !== currentUser.id &&
+        (i.schedule_month < firstMine.schedule_month ||
+          (i.schedule_month === firstMine.schedule_month &&
+            allItems.indexOf(i) < allItems.indexOf(firstMine)))
+      ).length;
+      const tip = document.getElementById('queueTip');
+      tip.innerHTML = `🔔 你前面还有 <strong>${ahead}</strong> 单`;
+      show(tip);
+    }
+  }
+
+  // 按月分组
+  const groups = {};
+  items.forEach(item => {
+    const m = item.schedule_month || '未排期';
+    if (!groups[m]) groups[m] = [];
+    groups[m].push(item);
+  });
+
+  Object.values(groups).forEach(list => {
+    list.sort((a, b) => {
+      if (a.status === 'completed' && b.status !== 'completed') return 1;
+      if (a.status !== 'completed' && b.status === 'completed') return -1;
+      return 0;
+    });
+  });
+
+  const container = document.getElementById('queueList');
+  show(container);
+
+  const months = Object.keys(groups).sort();
+  let html = '';
+
+  // 显示当前过滤状态
+  if (queueFilterMonth) {
+    html += `<div style="padding:8px 0 4px;display:flex;align-items:center;gap:8px;">
+      <span style="font-size:14px;color:var(--c-primary);font-weight:500;">📅 ${fmtMonth(queueFilterMonth)}</span>
+      <button class="btn btn-sm btn-ghost" style="padding:2px 10px;font-size:12px;" onclick="queueFilterMonth=null;loadQueue()">✕ 清除筛选</button>
+    </div>`;
+  }
+
+  months.forEach(m => {
+    const list = groups[m];
+    const ms = monthSettings[m] || { normal_limit: 8, rush_limit: 2 };
+    const normalCount = list.filter(i => !i.is_rush && i.status !== 'completed').length;
+    const rushCount = list.filter(i => i.is_rush && i.status !== 'completed').length;
+    const normalFull = normalCount >= ms.normal_limit;
+    const rushFull = rushCount >= ms.rush_limit;
+    const isCurrentMonth = m === curMonth;
+    const isFuture = m > curMonth;
+    const collapsed = m < curMonth && !queueFilterMonth;
+
+    html += `<div class="queue-month-group">
+      <div class="queue-month-header" onclick="toggleQueueMonth(this)">
+        <h3>${fmtMonth(m)}${isFuture ? ' 🔜 预排' : ''}</h3>
+        <div class="stats">
+          <span>普通 ${normalCount}/${ms.normal_limit} ${normalFull ? '<span class="full">满</span>' : ''}</span>
+          <span>加塞 ${rushCount}/${ms.rush_limit} ${rushFull ? '<span class="full">满</span>' : ''}</span>
+        </div>
+        <span class="arrow ${collapsed ? 'collapsed' : ''}">▼</span>
+      </div>
+      <div class="queue-month-body" style="${collapsed ? 'display:none;' : ''}">`;
+
+    list.forEach(item => {
+      const isMine = currentUser && item.user_id === currentUser.id;
+      const nodes = Array.isArray(item.nodes) ? item.nodes : (typeof item.nodes === 'string' ? JSON.parse(item.nodes) : []);
+
+      html += `<div class="queue-card status-${item.status} ${isMine ? 'is-mine' : ''}"
+        onclick="onQueueCardClick('${item.id}', ${isMine})" >
+        ${isMine ? '<span class="mine-badge">我的</span>' : ''}
+        <div class="qc-left">
+          <div class="qc-no">${item.order_no}</div>
+          <div class="qc-name">${item.customer_name} · ${item.project_name}</div>
+          <div class="qc-sub">预估 ${item.estimated_time || '待定'}</div>
+        </div>
+        <div class="qc-right">
+          ${item.is_rush ? '<span class="qc-rush">加急</span>' : ''}
+          <div class="qc-dots">${renderNodeDots(nodes)}</div>
+        </div>
+      </div>`;
+    });
+
+    html += '</div></div>';
+  });
+
+  container.innerHTML = html || '<p style="text-align:center;padding:40px;color:var(--c-text-light);">暂无排单</p>';
+};
+
+/* ═══════════════════════════════════════════
+   15. 店长后台排单管理 - 年月选择器 + 拖拽排序
+   ═══════════════════════════════════════════ */
+const _origLoadAdminQueue = loadAdminQueue;
+loadAdminQueue = async function(body) {
+  body.innerHTML = '<div class="page-content"><div class="skeleton skeleton-card"></div></div>';
+
+  const [ordersRes, msRes] = await Promise.all([
+    sb.from('orders').select('*').order('schedule_month').order('sort_order'),
+    sb.from('month_settings').select('*').order('month')
+  ]);
+
+  const orders = ordersRes.data || [];
+  const settings = msRes.data || [];
+
+  let html = `<div class="page-content">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h3 style="font-size:16px;">月份容量设置</h3>
+      <button class="btn btn-sm btn-secondary" onclick="openMonthPicker('adminQueue')">📅 选年月</button>
+    </div>`;
+
+  // 如果有过滤月份，显示
+  if (adminQueueFilterMonth) {
+    html += `<div style="padding:4px 0 12px;display:flex;align-items:center;gap:8px;">
+      <span style="font-size:14px;color:var(--c-primary);font-weight:500;">📅 ${fmtMonth(adminQueueFilterMonth)}</span>
+      <button class="btn btn-sm btn-ghost" style="padding:2px 10px;font-size:12px;" onclick="adminQueueFilterMonth=null;loadAdminQueue(document.getElementById('adminBody'))">✕ 清除筛选</button>
+    </div>`;
+  }
+
+  // 月份容量设置
+  const months = [...new Set([...orders.map(o => o.schedule_month), ...settings.map(s => s.month)])].filter(Boolean).sort();
+  if (!months.length) months.push(getCurrentMonth());
+
+  const displayMonths = adminQueueFilterMonth ? months.filter(m => m === adminQueueFilterMonth) : months;
+
+  displayMonths.forEach(m => {
+    const ms = settings.find(s => s.month === m) || { normal_limit: 8, rush_limit: 2, id: null };
+    html += `<div class="card" style="padding:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <strong>${fmtMonth(m)}</strong>
+        <div style="display:flex;gap:8px;font-size:13px;">
+          <span>普通上限: <input type="number" value="${ms.normal_limit}" style="width:50px;padding:4px;font-size:13px;" onchange="updateMonthSetting('${m}','${ms.id}','normal_limit',this.value)"></span>
+          <span>加塞上限: <input type="number" value="${ms.rush_limit}" style="width:50px;padding:4px;font-size:13px;" onchange="updateMonthSetting('${m}','${ms.id}','rush_limit',this.value)"></span>
+        </div>
+      </div>
+    </div>`;
+  });
+
+  html += `<div style="margin-bottom:16px;">
+    <button class="btn btn-sm btn-secondary" onclick="addMonthSetting()">+ 添加月份</button>
+  </div>`;
+
+  // 按月分组的排单列表（带拖拽）
+  const groups = {};
+  orders.forEach(o => {
+    const m = o.schedule_month || '未排期';
+    if (!groups[m]) groups[m] = [];
+    groups[m].push(o);
+  });
+
+  const groupMonths = adminQueueFilterMonth
+    ? Object.keys(groups).filter(m => m === adminQueueFilterMonth).sort()
+    : Object.keys(groups).sort();
+
+  groupMonths.forEach(m => {
+    html += `<h3 style="font-size:15px;margin:16px 0 8px;">${fmtMonth(m)}</h3>
+      <div class="drag-container" data-month="${m}">`;
+    groups[m].forEach((o, i) => {
+      html += `<div class="admin-card drag-item" data-order-id="${o.id}" data-sort="${o.sort_order}" style="display:flex;align-items:center;gap:12px;">
+        <div style="display:flex;flex-direction:column;gap:2px;cursor:grab;padding:4px;color:var(--c-gray-purple);font-size:16px;" class="drag-handle">☰</div>
+        <div style="flex:1;">
+          <div style="font-weight:600;font-size:14px;">${o.order_no} · ${o.customer_name}</div>
+          <div style="font-size:12px;color:var(--c-text-light);">${o.project_name} ${o.is_rush ? '🔥' : ''} | ${statusText(o.status)} | 预估: ${o.estimated_time || '-'}</div>
+        </div>
+        <select style="width:auto;font-size:12px;padding:4px;" onchange="updateOrderField('${o.id}','status',this.value);loadAdminQueue(document.getElementById('adminBody'))">
+          <option value="queued" ${o.status==='queued'?'selected':''}>排队中</option>
+          <option value="in_progress" ${o.status==='in_progress'?'selected':''}>制作中</option>
+          <option value="completed" ${o.status==='completed'?'selected':''}>已完成</option>
+        </select>
+      </div>`;
+    });
+    html += '</div>';
+  });
+
+  html += '</div>';
+  body.innerHTML = html;
+
+  // 初始化拖拽
+  initDragSort();
+};
+
+/* ═══════════════════════════════════════════
+   16. 触摸拖拽排序
+   ═══════════════════════════════════════════ */
+function initDragSort() {
+  const containers = document.querySelectorAll('.drag-container');
+  containers.forEach(container => {
+    const items = container.querySelectorAll('.drag-item');
+    items.forEach(item => {
+      let longPressTimer = null;
+      let isDragging = false;
+      let startY = 0;
+      let offsetY = 0;
+      let clone = null;
+      let siblings = [];
+
+      const handle = item.querySelector('.drag-handle') || item;
+
+      handle.addEventListener('touchstart', (e) => {
+        longPressTimer = setTimeout(() => {
+          isDragging = true;
+          startY = e.touches[0].clientY;
+          const rect = item.getBoundingClientRect();
+          offsetY = startY - rect.top;
+
+          // 震动反馈
+          if (navigator.vibrate) navigator.vibrate(50);
+
+          item.classList.add('dragging');
+          siblings = Array.from(container.querySelectorAll('.drag-item')).filter(s => s !== item);
+
+        }, 350);
+      }, { passive: true });
+
+      handle.addEventListener('touchmove', (e) => {
+        if (!isDragging) {
+          clearTimeout(longPressTimer);
+          return;
+        }
+        e.preventDefault();
+        const y = e.touches[0].clientY;
+        const itemRect = item.getBoundingClientRect();
+
+        // 找到要插入的位置
+        siblings.forEach(sib => {
+          const sibRect = sib.getBoundingClientRect();
+          const sibMid = sibRect.top + sibRect.height / 2;
+          sib.classList.remove('drag-over-above', 'drag-over-below');
+          if (y < sibMid && y > sibRect.top - 10) {
+            sib.classList.add('drag-over-below');
+          } else if (y > sibMid && y < sibRect.bottom + 10) {
+            sib.classList.add('drag-over-above');
+          }
+        });
+      }, { passive: false });
+
+      handle.addEventListener('touchend', async () => {
+        clearTimeout(longPressTimer);
+        if (!isDragging) return;
+        isDragging = false;
+        item.classList.remove('dragging');
+
+        // 确定新顺序
+        const allItems = Array.from(container.querySelectorAll('.drag-item'));
+        siblings.forEach(s => s.classList.remove('drag-over-above', 'drag-over-below'));
+
+        // 收集新顺序并批量更新
+        const newOrder = allItems.map((el, idx) => ({
+          id: el.dataset.orderId,
+          sort_order: idx + 1
+        }));
+
+        // 批量更新排序
+        for (const o of newOrder) {
+          await sb.from('orders').update({ sort_order: o.sort_order }).eq('id', o.id);
+        }
+
+        toast('排序已保存', 'success');
+        loadAdminQueue(document.getElementById('adminBody'));
+      });
+
+      handle.addEventListener('touchcancel', () => {
+        clearTimeout(longPressTimer);
+        isDragging = false;
+        item.classList.remove('dragging');
+        siblings.forEach(s => s.classList.remove('drag-over-above', 'drag-over-below'));
+      });
+    });
+  });
 }
 
 // 启动
